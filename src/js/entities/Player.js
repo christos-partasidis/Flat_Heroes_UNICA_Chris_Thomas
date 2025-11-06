@@ -16,13 +16,15 @@ class Player {
         // player color
         this.color = '#FF7711';
 
-        this.speed = 5;
+        this.speed = 8;
         
         // physics properties
         this.velocityY = 0;
         this.gravity = 0.5;
         this.onGround = false;
         this.jumpPower = -12;
+        this.maxJumps = 2;  // Allow double jump
+        this.jumpsRemaining = this.maxJumps;
     }
 
     draw(ctx) {
@@ -40,10 +42,17 @@ class Player {
             this.x += this.speed;
         }
         
-        // Jump with space key
-        if (input.keys[' '] && this.onGround) {
-            this.velocityY = this.jumpPower;
-            this.onGround = false;
+        // Jump with space key (allows double jump) - only on key press, not hold
+        if (input.keysJustPressed[' ']) {
+            console.log('Space just pressed. Jumps remaining:', this.jumpsRemaining, 'On ground:', this.onGround);
+            
+            if (this.jumpsRemaining > 0) {
+                console.log('Jump executed! Jumps remaining before:', this.jumpsRemaining);
+                this.velocityY = this.jumpPower;
+                this.jumpsRemaining--;
+                this.onGround = false;
+                console.log('Jumps remaining after:', this.jumpsRemaining);
+            }
         }
         
         // apply gravity
@@ -69,6 +78,8 @@ class Player {
                     this.y = wall.y - this.size;
                     this.velocityY = 0;
                     this.onGround = true;
+                    console.log('Landed on ground! Resetting jumps to:', this.maxJumps);
+                    this.jumpsRemaining = this.maxJumps;  // Reset jumps when on ground
                 }
                 // Left wall collision
                 else if (wall.x === 0 && wall.width < wall.height) {

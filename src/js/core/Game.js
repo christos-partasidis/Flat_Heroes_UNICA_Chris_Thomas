@@ -68,6 +68,9 @@ class Game {
         this.player.update(this.input, this.walls);
         this.player.draw(this.canvas.ctx);
         
+        // reset input justPressed states at end of frame
+        this.input.update();
+        
         // continue loop if game is running
         if (this.isRunning) {
             requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
