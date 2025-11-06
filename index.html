@@ -8,8 +8,15 @@
     <link rel="stylesheet" type="text/css" href="src/css/style.css">
 </head>
 <body>
-    <div class="game-container">
-        <canvas id="gameCanvas"></canvas>
+    <button id="devModeToggle" class="dev-toggle">Dev Mode: OFF</button>
+    <div class="game-wrapper">
+        <div id="debugPanel" class="debug-panel hidden">
+            <h3>Debug Info</h3>
+            <div id="debugContent"></div>
+        </div>
+        <div class="game-container">
+            <canvas id="gameCanvas"></canvas>
+        </div>
     </div>
     <script type="module" src="src/js/main.js"></script>
     

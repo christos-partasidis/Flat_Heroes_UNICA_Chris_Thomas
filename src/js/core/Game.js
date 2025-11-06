@@ -3,6 +3,7 @@ import Canvas from './Canvas.js';
 import Player from '../entities/Player.js';
 import InputHandler from './InputHandler.js';
 import Wall from '../entities/Wall.js';
+import Collision from '../physics/Collision.js';
 
 class Game {
     constructor() {
@@ -21,6 +22,10 @@ class Game {
         
         // create walls
         this.walls = this.createWalls();
+
+        // Developer mode
+        this.devMode = false;
+        this.iniDevMode();
         
         // log input state for testing
         console.log('Input handler initialized');
@@ -68,6 +73,9 @@ class Game {
         this.player.update(this.input, this.walls);
         this.player.draw(this.canvas.ctx);
         
+        // update debug panel if in dev mode
+        this.updateDebugPanel();
+        
         // reset input justPressed states at end of frame
         this.input.update();
         
@@ -75,6 +83,108 @@ class Game {
         if (this.isRunning) {
             requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
         }
+    }
+
+    // Initialize developer mode toggle
+    iniDevMode() {
+        const toggleBtn = document.getElementById('devModeToggle');
+        const debugPanel = document.getElementById('debugPanel');
+
+        toggleBtn.addEventListener('click', () => {
+            this.devMode = !this.devMode;
+            toggleBtn.textContent = `Dev Mode: ${this.devMode ? 'ON' : 'OFF'}`;
+            toggleBtn.classList.toggle('active', this.devMode);
+            debugPanel.classList.toggle('hidden', !this.devMode);
+
+        });
+    }
+
+    // Update debug panel with current game state
+    updateDebugPanel() {
+        if (!this.devMode) return;
+        
+        const debugContent = document.getElementById('debugContent');
+        
+        // Use the player's stored collision state
+        const collisions = this.player.collisions;
+        
+        debugContent.innerHTML = `
+            <div class="debug-section">
+                <h4>Player Position</h4>
+                <div class="debug-item">
+                    <span class="debug-label">X:</span>
+                    <span class="debug-value">${Math.round(this.player.x)}</span>
+                </div>
+                <div class="debug-item">
+                    <span class="debug-label">Y:</span>
+                    <span class="debug-value">${Math.round(this.player.y)}</span>
+                </div>
+            </div>
+            
+            <div class="debug-section">
+                <h4>Velocity</h4>
+                <div class="debug-item">
+                    <span class="debug-label">Velocity Y:</span>
+                    <span class="debug-value">${this.player.velocityY.toFixed(2)}</span>
+                </div>
+                <div class="debug-item">
+                    <span class="debug-label">Speed:</span>
+                    <span class="debug-value">${this.player.speed}</span>
+                </div>
+            </div>
+            
+            <div class="debug-section">
+                <h4>Physics</h4>
+                <div class="debug-item">
+                    <span class="debug-label">Gravity:</span>
+                    <span class="debug-value">${this.player.gravity}</span>
+                </div>
+                <div class="debug-item">
+                    <span class="debug-label">On Ground:</span>
+                    <span class="debug-value ${this.player.onGround ? 'active' : ''}">${this.player.onGround}</span>
+                </div>
+                <div class="debug-item">
+                    <span class="debug-label">Jumps Left:</span>
+                    <span class="debug-value">${this.player.jumpsRemaining} / ${this.player.maxJumps}</span>
+                </div>
+            </div>
+            
+            <div class="debug-section">
+                <h4>Collisions</h4>
+                <div class="debug-item">
+                    <span class="debug-label">Top:</span>
+                    <span class="debug-value ${collisions.top ? 'active' : ''}">${collisions.top}</span>
+                </div>
+                <div class="debug-item">
+                    <span class="debug-label">Bottom:</span>
+                    <span class="debug-value ${collisions.bottom ? 'active' : ''}">${collisions.bottom}</span>
+                </div>
+                <div class="debug-item">
+                    <span class="debug-label">Left:</span>
+                    <span class="debug-value ${collisions.left ? 'active' : ''}">${collisions.left}</span>
+                </div>
+                <div class="debug-item">
+                    <span class="debug-label">Right:</span>
+                    <span class="debug-value ${collisions.right ? 'active' : ''}">${collisions.right}</span>
+                </div>
+            </div>
+            
+            <div class="debug-section">
+                <h4>Input</h4>
+                <div class="debug-item">
+                    <span class="debug-label">Left:</span>
+                    <span class="debug-value ${this.input.keys.ArrowLeft ? 'active' : ''}">${this.input.keys.ArrowLeft}</span>
+                </div>
+                <div class="debug-item">
+                    <span class="debug-label">Right:</span>
+                    <span class="debug-value ${this.input.keys.ArrowRight ? 'active' : ''}">${this.input.keys.ArrowRight}</span>
+                </div>
+                <div class="debug-item">
+                    <span class="debug-label">Space:</span>
+                    <span class="debug-value ${this.input.keys[' '] ? 'active' : ''}">${this.input.keys[' ']}</span>
+                </div>
+            </div>
+        `;
     }
 }
 

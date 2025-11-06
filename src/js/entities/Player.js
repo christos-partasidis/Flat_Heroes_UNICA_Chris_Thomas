@@ -7,7 +7,7 @@ class Player {
         this.canvas = canvas;
         
         // player size (square)
-        this.size = 30;
+        this.size = 40;
 
         // center the player on screen
         this.x = canvas.width / 2 - this.size / 2;  // center horizontally
@@ -22,9 +22,17 @@ class Player {
         this.velocityY = 0;
         this.gravity = 0.5;
         this.onGround = false;
-        this.jumpPower = -12;
+        this.jumpPower = -14;
         this.maxJumps = 2;  // Allow double jump
         this.jumpsRemaining = this.maxJumps;
+        
+        // collision states for debug panel
+        this.collisions = {
+            top: false,
+            bottom: false,
+            left: false,
+            right: false
+        };
     }
 
     draw(ctx) {
@@ -44,23 +52,25 @@ class Player {
         
         // Jump with space key (allows double jump) - only on key press, not hold
         if (input.keysJustPressed[' ']) {
-            console.log('Space just pressed. Jumps remaining:', this.jumpsRemaining, 'On ground:', this.onGround);
-            
             if (this.jumpsRemaining > 0) {
-                console.log('Jump executed! Jumps remaining before:', this.jumpsRemaining);
                 this.velocityY = this.jumpPower;
                 this.jumpsRemaining--;
                 this.onGround = false;
-                console.log('Jumps remaining after:', this.jumpsRemaining);
             }
         }
+        
+        // reset ground state and collisions before physics update
+        this.onGround = false;
+        this.collisions = {
+            top: false,
+            bottom: false,
+            left: false,
+            right: false
+        };
         
         // apply gravity
         this.velocityY += this.gravity;
         this.y += this.velocityY;
-
-        // reset ground state
-        this.onGround = false;
 
         // check wall collisions and constrain position
         walls.forEach((wall) => {
@@ -72,22 +82,25 @@ class Player {
                 if (wall.y === 0 && wall.height < wall.width) {
                     this.y = wall.height;
                     this.velocityY = 0;
+                    this.collisions.top = true;
                 }
                 // Bottom wall collision
                 else if (wall.y > this.canvas.height / 2 && wall.height < wall.width) {
                     this.y = wall.y - this.size;
                     this.velocityY = 0;
                     this.onGround = true;
-                    console.log('Landed on ground! Resetting jumps to:', this.maxJumps);
+                    this.collisions.bottom = true;
                     this.jumpsRemaining = this.maxJumps;  // Reset jumps when on ground
                 }
                 // Left wall collision
                 else if (wall.x === 0 && wall.width < wall.height) {
                     this.x = wall.width;
+                    this.collisions.left = true;
                 }
                 // Right wall collision
                 else if (wall.x > this.canvas.width / 2 && wall.width < wall.height) {
                     this.x = wall.x - this.size;
+                    this.collisions.right = true;
                 }
             }
         });
