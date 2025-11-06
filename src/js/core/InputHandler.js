@@ -6,7 +6,8 @@ class InputHandler {
             ArrowLeft: false,
             ArrowRight: false,
             ArrowUp: false,
-            ArrowDown: false
+            ArrowDown: false,
+            ' ': false  // Space key
         };
 
         // add event listeners

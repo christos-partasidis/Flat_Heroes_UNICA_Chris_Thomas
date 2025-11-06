@@ -14,10 +14,15 @@ class Player {
         this.y = canvas.height / 2 - this.size / 2; // center vertically
         
         // player color
-        this.color = '#FF0000';
+        this.color = '#FF7711';
 
         this.speed = 5;
         
+        // physics properties
+        this.velocityY = 0;
+        this.gravity = 0.5;
+        this.onGround = false;
+        this.jumpPower = -12;
     }
 
     draw(ctx) {
@@ -27,11 +32,7 @@ class Player {
 
     // add update method for movement
     update(input, walls) {
-        // store previous position
-        const prevX = this.x;
-        const prevY = this.y;
-
-        // horizontal movement
+        // horizontal movement only
         if (input.keys.ArrowLeft) {
             this.x -= this.speed;
         }
@@ -39,13 +40,18 @@ class Player {
             this.x += this.speed;
         }
         
-        // vertical movement
-        if (input.keys.ArrowUp) {
-            this.y -= this.speed;
+        // Jump with space key
+        if (input.keys[' '] && this.onGround) {
+            this.velocityY = this.jumpPower;
+            this.onGround = false;
         }
-        if (input.keys.ArrowDown) {
-            this.y += this.speed;
-        }
+        
+        // apply gravity
+        this.velocityY += this.gravity;
+        this.y += this.velocityY;
+
+        // reset ground state
+        this.onGround = false;
 
         // check wall collisions and constrain position
         walls.forEach((wall) => {
@@ -56,10 +62,13 @@ class Player {
                 // Top wall collision
                 if (wall.y === 0 && wall.height < wall.width) {
                     this.y = wall.height;
+                    this.velocityY = 0;
                 }
                 // Bottom wall collision
                 else if (wall.y > this.canvas.height / 2 && wall.height < wall.width) {
                     this.y = wall.y - this.size;
+                    this.velocityY = 0;
+                    this.onGround = true;
                 }
                 // Left wall collision
                 else if (wall.x === 0 && wall.width < wall.height) {
