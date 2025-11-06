@@ -64,8 +64,8 @@ class Game {
         // draw walls
         this.walls.forEach(wall => wall.draw(this.canvas.ctx));
 
-        // update player with input
-        this.player.update(this.input);
+        // update player with input and walls
+        this.player.update(this.input, this.walls);
         this.player.draw(this.canvas.ctx);
         
         // continue loop if game is running

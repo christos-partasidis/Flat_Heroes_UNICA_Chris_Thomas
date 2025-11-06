@@ -1,4 +1,6 @@
 // Player.js
+import Collision from '../physics/Collision.js';
+
 class Player {
     constructor(canvas) {
         // store canvas reference for boundary checking
@@ -24,7 +26,11 @@ class Player {
     }
 
     // add update method for movement
-    update(input) {
+    update(input, walls) {
+        // store previous position
+        const prevX = this.x;
+        const prevY = this.y;
+
         // horizontal movement
         if (input.keys.ArrowLeft) {
             this.x -= this.speed;
@@ -41,9 +47,30 @@ class Player {
             this.y += this.speed;
         }
 
-        // keep player within canvas bounds
-        this.x = Math.max(0, Math.min(this.x, this.canvas.width - this.size));
-        this.y = Math.max(0, Math.min(this.y, this.canvas.height - this.size));
+        // check wall collisions and constrain position
+        walls.forEach((wall) => {
+            if (Collision.checkRectCollision(
+                { x: this.x, y: this.y, width: this.size, height: this.size },
+                wall
+            )) {
+                // Top wall collision
+                if (wall.y === 0 && wall.height < wall.width) {
+                    this.y = wall.height;
+                }
+                // Bottom wall collision
+                else if (wall.y > this.canvas.height / 2 && wall.height < wall.width) {
+                    this.y = wall.y - this.size;
+                }
+                // Left wall collision
+                else if (wall.x === 0 && wall.width < wall.height) {
+                    this.x = wall.width;
+                }
+                // Right wall collision
+                else if (wall.x > this.canvas.width / 2 && wall.width < wall.height) {
+                    this.x = wall.x - this.size;
+                }
+            }
+        });
     }
 
 }
