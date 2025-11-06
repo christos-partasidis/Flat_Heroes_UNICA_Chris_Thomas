@@ -6,11 +6,19 @@ body{
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background: #000;
+    background: #A9B8B0;
+}
+
+.game-container {
+    width: 70vw;
+    height: 80vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 canvas {
     background: #A9B8B0;
     width: 100%;
-    height: auto;
+    height: 100%;
 }

@@ -28,7 +28,7 @@ class Game {
 
     // create the four walls around the canvas
     createWalls() {
-        const wallThickness = 20;
+        const wallThickness = 15;
         
         return [
             // Top wall - Orange
