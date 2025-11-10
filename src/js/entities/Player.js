@@ -11,7 +11,7 @@ class Player {
 
         // center the player on screen
         this.x = canvas.width / 2 - this.size / 2;  // center horizontally
-        this.y = canvas.height / 2 - this.size / 2; // center vertically
+        this.y = canvas.height * 0.25 - this.size / 2; // 25% from top
         
         // player color
         this.color = '#FF7711';

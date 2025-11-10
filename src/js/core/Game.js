@@ -46,7 +46,16 @@ class Game {
             new Wall(0, 0, wallThickness, this.canvas.height, '#003C57'),
             
             // Right wall - Yellow
-            new Wall(this.canvas.width - wallThickness, 0, wallThickness, this.canvas.height, '#CEEE00')
+            new Wall(this.canvas.width - wallThickness, 0, wallThickness, this.canvas.height, '#CEEE00'),
+            
+            // Middle wall for testing
+            new Wall(
+                wallThickness,                 // start at left wall
+                this.canvas.height / 2,        // center vertically
+                (this.canvas.width / 2) * 1.5,                
+                wallThickness,                 // height same as boundary walls
+                '#028368'                      // color
+            )
         ];
     }
 
