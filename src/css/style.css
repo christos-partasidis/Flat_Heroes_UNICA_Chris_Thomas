@@ -11,7 +11,7 @@ body{
 
 .game-container {
     width: 70vw;
-    height: 80vh;
+    height: 95vh; /* Changed from 80vh to 90vh for more height */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -110,7 +110,7 @@ canvas {
 
 .game-container {
     width: 70vw;
-    height: 80vh;
+    height: 95vh; /* Changed from 80vh to 90vh for more height */
     display: flex;
     justify-content: center;
     align-items: center;

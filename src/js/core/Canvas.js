@@ -19,7 +19,7 @@ class Canvas {
     setCanvasSize() {
         // get the actual rendered size of the canvas element
         const width = Math.floor(window.innerWidth);
-        // maintain 16:9 aspect ratio
+        
         const height = Math.floor(width * (9/16));
         
         // set canvas logical size
