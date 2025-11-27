@@ -18,10 +18,14 @@ class Game {
     this.hasWon = false;
     this.gameHasStarted = false; // Waits for click
 
+    // Level System
+    this.currentLevel = 1;
+    this.maxLevel = 5; // total number of levels
+    this.levelDuration = 10; // duration for each level in seconds
+
     // Time Tracking
     this.lastTime = 0;
-    this.survivalTime = 10; // Win after 10 seconds
-    this.timeLeft = this.survivalTime;
+    this.timeLeft = this.levelDuration;
 
     // Create Inputs
     this.input = new InputHandler();
@@ -42,9 +46,7 @@ class Game {
   // Helper to reset player and enemies (used in constructor and restart)
   resetEntities() {
     this.player = new Player(this.canvas);
-    this.enemies = [];
-    // Spawn one enemy to start
-    this.enemies.push(new Enemy(100, 100, this.canvas));
+    this.spawnEnemiesForLevel();
   }
 
   // The Entry Point: Shows "Click to Start"
@@ -151,7 +153,8 @@ class Game {
     console.log("Restarting Game...");
     this.isGameOver = false;
     this.hasWon = false;
-    this.timeLeft = this.survivalTime;
+    this.currentLevel = 1;
+    this.timeLeft = this.levelDuration;
 
     this.resetEntities();
     this.start();
@@ -162,7 +165,7 @@ class Game {
 
     // 1. Check Win Condition (Timer)
     if (this.timeLeft <= 0) {
-      this.gameOver(true);
+      this.completeLevel();
       return;
     }
 
@@ -181,6 +184,88 @@ class Game {
       }
     });
   }
+
+  completeLevel(){
+    if(this.currentLevel == this.maxLevel){
+      // Final Level Completed - Win Game
+      this.gameOver(true);
+    }else{
+      // Level Completed - Advance to Next Level
+      this.isRunning = false;
+      this.showLevelTransition();
+    }
+  }
+
+  // This was suggested by AI (Tool: Claude Sonnet 4.5 integrated within VSCode + Auto Suggestions)
+  showLevelTransition(){
+    const ctx = this.canvas.ctx;
+
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+    ctx.font = "bold 50px Arial";
+    ctx.fillText(
+      `Level ${this.currentLevel} Complete!`,
+      this.canvas.width / 2,
+      this.canvas.height / 2 - 20,
+    );
+
+    ctx.fillStyle = "white";
+    ctx.font = "30px Arial";
+    ctx.fillText(
+      `Get ready for Level ${this.currentLevel + 1}`,
+      this.canvas.width / 2,
+      this.canvas.height / 2 + 20
+    );
+
+    setTimeout(() => {
+      this.nextLevel();
+    }, 3000); // 3 second delay
+  }
+
+  nextLevel(){
+    this.currentLevel++;
+    this.timeLeft = this.levelDuration;
+    
+    // Reset player position
+    this.player.x = this.canvas.width / 2 - this.player.size / 2;
+    this.player.y = this.canvas.height * 0.25 - this.player.size / 2;
+    this.player.velocityY = 0;
+
+    this.spawnEnemiesForLevel();
+
+    // Resume game loop
+    this.isRunning = true;
+    this.lastTime = performance.now();
+    requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
+  }
+
+  // AI generated method
+  spawnEnemiesForLevel() {
+    // Clear existing enemies
+    this.enemies = [];
+    
+    // Spawn more enemies based on level (1 enemy per level)
+    const enemyCount = this.currentLevel;
+    
+    for (let i = 0; i < enemyCount; i++) {
+      // Spawn in top left corner with spacing between multiple enemies
+      const x = 50 + (i * 40); // Offset horizontally for multiple enemies
+      const y = 50 + (i * 40); // Offset vertically for multiple enemies
+      
+      const enemy = new Enemy(x, y, this.canvas);
+      
+      // Make enemies faster in later levels
+      const speedMultiplier = 1 + (this.currentLevel - 1) * 0.3;
+      enemy.speedX *= speedMultiplier;
+      enemy.speedY *= speedMultiplier;
+      
+      this.enemies.push(enemy);
+    }
+  }
+  
 
   gameOver(won) {
     this.isRunning = false; // Stop the loop
@@ -260,8 +345,17 @@ class Game {
     ctx.fillStyle = "#fff";
     ctx.font = "bold 24px Arial";
     ctx.textAlign = "left";
-    // Math.max(0, ...) ensures we never show negative numbers
-    ctx.fillText(`Time: ${Math.max(0, Math.ceil(this.timeLeft))}`, 20, 40);
+    // Show level and time
+    ctx.fillText(
+      `Level ${this.currentLevel}/${this.maxLevel}`,
+      20,
+      40
+    );
+    ctx.fillText(
+      `Time: ${Math.max(0, Math.ceil(this.timeLeft))}`,
+      20,
+      70
+    );
   }
 
   drawGameOverScreen(title, subtitle) {
