@@ -39,6 +39,7 @@ class Game {
     // Developer mode setup
     this.devMode = false;
     this.iniDevMode();
+    this.initVolumeMixer();
 
     console.log("Game initialized - waiting for user start.");
   }
@@ -393,6 +394,37 @@ class Game {
       toggleBtn.classList.toggle("active", this.devMode);
       debugPanel.classList.toggle("hidden", !this.devMode);
     });
+  }
+
+  initVolumeMixer() {
+    const tglBtn = document.getElementById("volumeToggle");
+    const vlmP = document.getElementById("volumePanel");
+
+    if (!tglBtn || !vlmP) return;
+
+    // Toggle panel visibility
+    tglBtn.addEventListener("click", () => {
+      const isHidden = vlmP.classList.toggle("hidden");
+      tglBtn.classList.toggle("active", !isHidden);
+    });
+
+    // Setup volume sliders
+    const setupSlider = (sliderId, valueId, type) => {
+      const slider = document.getElementById(sliderId);
+      const valueDisplay = document.getElementById(valueId);
+      
+      if (!slider || !valueDisplay) return;
+
+      slider.addEventListener("input", (e) => {
+        const value = e.target.value / 100;
+        SoundManager.setVolume(type, value);
+        valueDisplay.textContent = `${e.target.value}%`;
+      });
+    };
+
+    setupSlider("masterVolume", "masterValue", "master");
+    setupSlider("musicVolume", "musicValue", "music");
+    setupSlider("sfxVolume", "sfxValue", "sfx");
   }
 
   updateDebugPanel() {

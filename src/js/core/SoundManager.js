@@ -7,6 +7,13 @@ class SoundManager {
       return;
     }
 
+    // Volume settings
+    this.volumes = {
+      master: 1.0,
+      music: 0.4,
+      sfx: 0.5,
+    };
+
     this.sounds = {
       jump: new Howl({
         src: ["assets/sounds/jump.wav"],
@@ -41,6 +48,33 @@ class SoundManager {
       this.sounds[soundName].stop();
     }
   }
+
+  setVolume(type, value){
+    value = Math.max(0, Math.min(1, value));
+
+    if (type == 'master'){
+      this.volumes.master = value;
+      this.updateAllVolumes();
+    } else if(type === 'music'){
+      this.volumes.music = value;
+      this.sounds.bgm.volume(this.volumes.music * this.volumes.master);
+    } else if (type === 'sfx') {
+      this.volumes.sfx = value;
+      this.sounds.jump.volume(this.volumes.sfx * this.volumes.master);
+      this.sounds.dash.volume(this.volumes.sfx * this.volumes.master * 0.6);
+      this.sounds.hit.volume(this.volumes.sfx * this.volumes.master * 1.6);
+    }
+  }
+    updateAllVolumes() {
+    this.sounds.bgm.volume(this.volumes.music * this.volumes.master);
+    this.sounds.jump.volume(this.volumes.sfx * this.volumes.master);
+    this.sounds.dash.volume(this.volumes.sfx * this.volumes.master * 0.6);
+    this.sounds.hit.volume(this.volumes.sfx * this.volumes.master * 1.6);
+  }
+
+  getVolume(type) {
+    return this.volumes[type] || 1.0;
+  }
 }
 
-export default new SoundManager(); // Export a single instance (Singleton)
+export default new SoundManager();

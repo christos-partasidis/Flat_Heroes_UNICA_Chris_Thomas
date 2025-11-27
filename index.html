@@ -10,6 +10,27 @@
 </head>
 <body>
     <button id="devModeToggle" class="dev-toggle">Dev Mode: OFF</button>
+
+    <button id="volumeToggle" class="volume-toggle">🔊 Volume</button>
+    <div id="volumePanel" class="volume-panel hidden">
+        <h3>Volume Settings</h3>
+        <div class="volume-control">
+            <label>Master Volume</label>
+            <input type="range" id="masterVolume" min="0" max="100" value="100">
+            <span id="masterValue">100%</span>
+        </div>
+        <div class="volume-control">
+            <label>Music Volume</label>
+            <input type="range" id="musicVolume" min="0" max="100" value="40">
+            <span id="musicValue">40%</span>
+        </div>
+        <div class="volume-control">
+            <label>SFX Volume</label>
+            <input type="range" id="sfxVolume" min="0" max="100" value="50">
+            <span id="sfxValue">50%</span>
+        </div>
+    </div>
+
     <div class="game-wrapper">
         <div id="debugPanel" class="debug-panel hidden">
             <h3>Debug Info</h3>
