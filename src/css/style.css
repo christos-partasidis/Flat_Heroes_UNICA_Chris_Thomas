@@ -10,7 +10,7 @@ body{
 }
 
 .game-container {
-    width: 50vw; /* Changed from 70vw - reduce further for narrower game */
+    width: 60vw; /* Increased from 50vw for slightly wider game */
     height: 95vh; /* Changed from 80vh to 90vh for more height */
     display: flex;
     justify-content: center;
@@ -106,14 +106,6 @@ canvas {
 
 .debug-panel .debug-value.active {
     color: #FF7711;
-}
-
-.game-container {
-    width: 50vw; /* Changed from 70vw - reduce further for narrower game */
-    height: 95vh; /* Changed from 80vh to 90vh for more height */
-    display: flex;
-    justify-content: center;
-    align-items: center;
 }
 
 .volume-toggle {

@@ -8,7 +8,7 @@ class Player {
     this.canvas = canvas;
 
     // Size of the player square
-    this.size = 40;
+    this.size = 22 ;
 
     // Start in the middle-ish
     this.x = canvas.width / 2 - this.size / 2;

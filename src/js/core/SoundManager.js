@@ -9,7 +9,7 @@ class SoundManager {
 
     // Volume settings
     this.volumes = {
-      master: 1.0,
+      master: 0.0, // Changed from 1.0 to start muted
       music: 0.4,
       sfx: 0.5,
     };
@@ -35,6 +35,9 @@ class SoundManager {
         volume: 0.4,
       }),
     };
+
+    // Apply initial master volume (0.0) to all sounds
+    this.updateAllVolumes();
   }
 
   play(soundName) {
