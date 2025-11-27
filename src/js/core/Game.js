@@ -1,123 +1,322 @@
 // Game.js
-import Canvas from './Canvas.js';
-import Player from '../entities/Player.js';
-import InputHandler from './InputHandler.js';
-import Wall from '../entities/Wall.js';
-import Collision from '../physics/Collision.js';
+import Canvas from "./Canvas.js";
+import Player from "../entities/Player.js";
+import InputHandler from "./InputHandler.js";
+import Wall from "../entities/Wall.js";
+import Collision from "../physics/Collision.js";
+import Enemy from "../entities/Enemy.js";
+import SoundManager from "../core/SoundManager.js";
 
 class Game {
-    constructor() {
-        // initialize canvas
-        this.canvas = new Canvas();
-        // track if game is running
-        this.isRunning = false;
-        // store last frame timestamp
-        this.lastTime = 0;
+  constructor() {
+    // initialize canvas
+    this.canvas = new Canvas();
 
-        // create player instance
-        this.player = new Player(this.canvas);
+    // Game State Flags
+    this.isRunning = false;
+    this.isGameOver = false;
+    this.hasWon = false;
+    this.gameHasStarted = false; // Waits for click
 
-        // add input handler
-        this.input = new InputHandler();
-        
-        // create walls
-        this.walls = this.createWalls();
+    // Time Tracking
+    this.lastTime = 0;
+    this.survivalTime = 10; // Win after 10 seconds
+    this.timeLeft = this.survivalTime;
 
-        // Developer mode
-        this.devMode = false;
-        this.iniDevMode();
-        
-        // log input state for testing
-        console.log('Input handler initialized');
-    }
+    // Create Inputs
+    this.input = new InputHandler();
 
-    // create the four walls around the canvas
-    createWalls() {
-        const wallThickness = 15;
-        
-        return [
-            // Top wall - Orange
-            new Wall(0, 0, this.canvas.width, wallThickness, '#FF7711'),
-            
-            // Bottom wall - Green
-            new Wall(0, this.canvas.height - wallThickness, this.canvas.width, wallThickness, '#028368'),
-            
-            // Left wall - Blue
-            new Wall(0, 0, wallThickness, this.canvas.height, '#003C57'),
-            
-            // Right wall - Yellow
-            new Wall(this.canvas.width - wallThickness, 0, wallThickness, this.canvas.height, '#CEEE00'),
-            
-            // Middle wall for testing
-            new Wall(
-                wallThickness,                 // start at left wall
-                this.canvas.height / 2,        // center vertically
-                (this.canvas.width / 2) * 1.5,                
-                wallThickness,                 // height same as boundary walls
-                '#028368'                      // color
-            )
-        ];
-    }
+    // Create World Entities
+    this.walls = this.createWalls();
 
-    // start the game loop
-    start() {
-        this.isRunning = true;
-        // start first frame
-        requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
-    }
+    // Initialize Player & Enemies
+    this.resetEntities();
 
-    // main game loop
-    gameLoop(timestamp) {
-        // calculate time between frames
-        const deltaTime = timestamp - this.lastTime;
-        this.lastTime = timestamp;
+    // Developer mode setup
+    this.devMode = false;
+    this.iniDevMode();
 
-        // clear previous frame
-        this.canvas.clear();
+    console.log("Game initialized - waiting for user start.");
+  }
 
-        // draw walls
-        this.walls.forEach(wall => wall.draw(this.canvas.ctx));
+  // Helper to reset player and enemies (used in constructor and restart)
+  resetEntities() {
+    this.player = new Player(this.canvas);
+    this.enemies = [];
+    // Spawn one enemy to start
+    this.enemies.push(new Enemy(100, 100, this.canvas));
+  }
 
-        // update player with input and walls
-        this.player.update(this.input, this.walls);
-        this.player.draw(this.canvas.ctx);
-        
-        // update debug panel if in dev mode
-        this.updateDebugPanel();
-        
-        // reset input justPressed states at end of frame
-        this.input.update();
-        
-        // continue loop if game is running
-        if (this.isRunning) {
-            requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
+  // The Entry Point: Shows "Click to Start"
+  init() {
+    const ctx = this.canvas.ctx;
+
+    // Clear and draw background
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.fillStyle = "#003C57";
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Draw Start Text
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center";
+
+    ctx.font = "bold 40px Arial";
+    ctx.fillText(
+      "CLICK TO START",
+      this.canvas.width / 2,
+      this.canvas.height / 2,
+    );
+
+    ctx.font = "20px Arial";
+    ctx.fillText(
+      "Survive for 10 seconds!",
+      this.canvas.width / 2,
+      this.canvas.height / 2 + 40,
+    );
+
+    // Wait for user interaction to unlock Audio and Start
+    window.addEventListener(
+      "click",
+      () => {
+        if (!this.gameHasStarted) {
+          this.gameHasStarted = true;
+
+          // Resume Audio Context (Browser Requirement)
+          if (typeof Howler !== "undefined" && Howler.ctx) {
+            Howler.ctx.resume().then(() => {
+              console.log("Audio Context Resumed");
+            });
+          }
+
+          this.start();
         }
+      },
+      { once: true },
+    );
+  }
+
+  // Define the level layout
+  createWalls() {
+    const wallThickness = 15;
+
+    return [
+      // Top wall - Orange
+      new Wall(0, 0, this.canvas.width, wallThickness, "#FF7711"),
+
+      // Bottom wall - Green
+      new Wall(
+        0,
+        this.canvas.height - wallThickness,
+        this.canvas.width,
+        wallThickness,
+        "#028368",
+      ),
+
+      // Left wall - Blue
+      new Wall(0, 0, wallThickness, this.canvas.height, "#003C57"),
+
+      // Right wall - Yellow
+      new Wall(
+        this.canvas.width - wallThickness,
+        0,
+        wallThickness,
+        this.canvas.height,
+        "#CEEE00",
+      ),
+
+      // Middle Platform
+      new Wall(
+        wallThickness,
+        this.canvas.height * 0.5, // Lowered platform so it's reachable
+        (this.canvas.width / 2) * 1.5,
+        wallThickness,
+        "#028368",
+      ),
+    ];
+  }
+
+  start() {
+    console.log("Game Loop Starting...");
+    this.isRunning = true;
+    this.lastTime = performance.now();
+
+    // Play Music
+    SoundManager.play("bgm");
+
+    // Start Loop
+    requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
+  }
+
+  restart() {
+    console.log("Restarting Game...");
+    this.isGameOver = false;
+    this.hasWon = false;
+    this.timeLeft = this.survivalTime;
+
+    this.resetEntities();
+    this.start();
+  }
+
+  checkGameStatus() {
+    if (this.isGameOver) return;
+
+    // 1. Check Win Condition (Timer)
+    if (this.timeLeft <= 0) {
+      this.gameOver(true);
+      return;
     }
 
-    // Initialize developer mode toggle
-    iniDevMode() {
-        const toggleBtn = document.getElementById('devModeToggle');
-        const debugPanel = document.getElementById('debugPanel');
+    // 2. Check Lose Condition (Collision with Enemies)
+    // We need a temp rect for the player because Enemy uses width/height but Player uses size
+    const playerRect = {
+      x: this.player.x,
+      y: this.player.y,
+      width: this.player.size,
+      height: this.player.size,
+    };
 
-        toggleBtn.addEventListener('click', () => {
-            this.devMode = !this.devMode;
-            toggleBtn.textContent = `Dev Mode: ${this.devMode ? 'ON' : 'OFF'}`;
-            toggleBtn.classList.toggle('active', this.devMode);
-            debugPanel.classList.toggle('hidden', !this.devMode);
+    this.enemies.forEach((enemy) => {
+      if (Collision.checkRectCollision(playerRect, enemy)) {
+        this.gameOver(false);
+      }
+    });
+  }
 
-        });
+  gameOver(won) {
+    this.isRunning = false; // Stop the loop
+    this.isGameOver = true;
+    this.hasWon = won;
+
+    // Handle Sound
+    SoundManager.stop("bgm");
+    if (!won) SoundManager.play("hit");
+
+    // Log status
+    const message = won ? "VICTORY!" : "GAME OVER";
+    const subMessage = won ? "You survived!" : "Click to Restart";
+    console.log(message);
+
+    // Draw the end screen
+    this.drawGameOverScreen(message, subMessage);
+
+    // Add Restart Listener (with a small delay to prevent accidental double-clicks)
+    setTimeout(() => {
+      window.addEventListener("click", () => this.restart(), { once: true });
+    }, 500);
+  }
+
+  // Main Game Loop
+  gameLoop(timestamp) {
+    // If not running, stop the loop
+    if (!this.isRunning) return;
+
+    // Calculate deltaTime (in seconds)
+    const deltaTime = (timestamp - this.lastTime) / 1000;
+    this.lastTime = timestamp;
+
+    // Prevent huge time jumps if tab was inactive
+    if (deltaTime < 0.1) {
+      this.timeLeft -= deltaTime;
     }
 
-    // Update debug panel with current game state
-    updateDebugPanel() {
-        if (!this.devMode) return;
-        
-        const debugContent = document.getElementById('debugContent');
-        
-        // Use the player's stored collision state
-        const collisions = this.player.collisions;
-        
-        debugContent.innerHTML = `
+    // --- UPDATE STEP ---
+    this.canvas.clear();
+
+    // Update & Draw Walls
+    this.walls.forEach((wall) => wall.draw(this.canvas.ctx));
+
+    // Update & Draw Player
+    this.player.update(this.input, this.walls);
+    this.player.draw(this.canvas.ctx);
+
+    // Update & Draw Enemies
+    this.enemies.forEach((enemy) => {
+      enemy.update(this.walls);
+      enemy.draw(this.canvas.ctx);
+    });
+
+    // Check Win/Lose
+    this.checkGameStatus();
+
+    // Draw UI (Timer)
+    this.drawUI();
+
+    // Debug Panel
+    this.updateDebugPanel();
+
+    // Reset Input flags
+    this.input.update();
+
+    // Continue Loop
+    if (this.isRunning) {
+      requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
+    }
+  }
+
+  // --- DRAWING HELPERS ---
+
+  drawUI() {
+    const ctx = this.canvas.ctx;
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 24px Arial";
+    ctx.textAlign = "left";
+    // Math.max(0, ...) ensures we never show negative numbers
+    ctx.fillText(`Time: ${Math.max(0, Math.ceil(this.timeLeft))}`, 20, 40);
+  }
+
+  drawGameOverScreen(title, subtitle) {
+    const ctx = this.canvas.ctx;
+    ctx.save();
+
+    // Semi-transparent black overlay
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Text
+    ctx.fillStyle = "#fff";
+    ctx.textAlign = "center";
+
+    ctx.font = "bold 60px Arial";
+    ctx.fillText(title, this.canvas.width / 2, this.canvas.height / 2 - 20);
+
+    ctx.font = "30px Arial";
+    ctx.fillText(subtitle, this.canvas.width / 2, this.canvas.height / 2 + 40);
+
+    ctx.restore();
+  }
+
+  // --- DEBUG TOOLS ---
+
+  iniDevMode() {
+    const toggleBtn = document.getElementById("devModeToggle");
+    const debugPanel = document.getElementById("debugPanel");
+
+    if (!toggleBtn || !debugPanel) return; // Safety check
+
+    toggleBtn.addEventListener("click", () => {
+      this.devMode = !this.devMode;
+      toggleBtn.textContent = `Dev Mode: ${this.devMode ? "ON" : "OFF"}`;
+      toggleBtn.classList.toggle("active", this.devMode);
+      debugPanel.classList.toggle("hidden", !this.devMode);
+    });
+  }
+
+  updateDebugPanel() {
+    if (!this.devMode) return;
+
+    const debugContent = document.getElementById("debugContent");
+    if (!debugContent) return;
+
+    const collisions = this.player.collisions;
+
+    debugContent.innerHTML = `
+            <div class="debug-section">
+                <h4>Game State</h4>
+                <div class="debug-item">
+                    <span class="debug-label">Time:</span>
+                    <span class="debug-value">${this.timeLeft.toFixed(1)}</span>
+                </div>
+            </div>
             <div class="debug-section">
                 <h4>Player Position</h4>
                 <div class="debug-item">
@@ -129,72 +328,19 @@ class Game {
                     <span class="debug-value">${Math.round(this.player.y)}</span>
                 </div>
             </div>
-            
-            <div class="debug-section">
-                <h4>Velocity</h4>
-                <div class="debug-item">
-                    <span class="debug-label">Velocity Y:</span>
-                    <span class="debug-value">${this.player.velocityY.toFixed(2)}</span>
-                </div>
-                <div class="debug-item">
-                    <span class="debug-label">Speed:</span>
-                    <span class="debug-value">${this.player.speed}</span>
-                </div>
-            </div>
-            
-            <div class="debug-section">
-                <h4>Physics</h4>
-                <div class="debug-item">
-                    <span class="debug-label">Gravity:</span>
-                    <span class="debug-value">${this.player.gravity}</span>
-                </div>
-                <div class="debug-item">
-                    <span class="debug-label">On Ground:</span>
-                    <span class="debug-value ${this.player.onGround ? 'active' : ''}">${this.player.onGround}</span>
-                </div>
-                <div class="debug-item">
-                    <span class="debug-label">Jumps Left:</span>
-                    <span class="debug-value">${this.player.jumpsRemaining} / ${this.player.maxJumps}</span>
-                </div>
-            </div>
-            
             <div class="debug-section">
                 <h4>Collisions</h4>
                 <div class="debug-item">
                     <span class="debug-label">Top:</span>
-                    <span class="debug-value ${collisions.top ? 'active' : ''}">${collisions.top}</span>
+                    <span class="debug-value ${collisions.top ? "active" : ""}">${collisions.top}</span>
                 </div>
                 <div class="debug-item">
                     <span class="debug-label">Bottom:</span>
-                    <span class="debug-value ${collisions.bottom ? 'active' : ''}">${collisions.bottom}</span>
-                </div>
-                <div class="debug-item">
-                    <span class="debug-label">Left:</span>
-                    <span class="debug-value ${collisions.left ? 'active' : ''}">${collisions.left}</span>
-                </div>
-                <div class="debug-item">
-                    <span class="debug-label">Right:</span>
-                    <span class="debug-value ${collisions.right ? 'active' : ''}">${collisions.right}</span>
-                </div>
-            </div>
-            
-            <div class="debug-section">
-                <h4>Input</h4>
-                <div class="debug-item">
-                    <span class="debug-label">Left:</span>
-                    <span class="debug-value ${this.input.keys.ArrowLeft ? 'active' : ''}">${this.input.keys.ArrowLeft}</span>
-                </div>
-                <div class="debug-item">
-                    <span class="debug-label">Right:</span>
-                    <span class="debug-value ${this.input.keys.ArrowRight ? 'active' : ''}">${this.input.keys.ArrowRight}</span>
-                </div>
-                <div class="debug-item">
-                    <span class="debug-label">Space:</span>
-                    <span class="debug-value ${this.input.keys[' '] ? 'active' : ''}">${this.input.keys[' ']}</span>
+                    <span class="debug-value ${collisions.bottom ? "active" : ""}">${collisions.bottom}</span>
                 </div>
             </div>
         `;
-    }
+  }
 }
 
 export default Game;
