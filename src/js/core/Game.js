@@ -181,6 +181,7 @@ class Game {
 
     this.enemies.forEach((enemy) => {
       if (Collision.checkRectCollision(playerRect, enemy)) {
+        SoundManager.play("collision");
         this.gameOver(false);
       }
     });

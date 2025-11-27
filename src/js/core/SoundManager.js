@@ -27,6 +27,10 @@ class SoundManager {
         src: ["assets/sounds/hit.wav"],
         volume: 0.8,
       }),
+      collision: new Howl({
+        src: ["assets/sounds/collision.mp3"],
+        volume: 0.7,
+      }),
       // Background music
       bgm: new Howl({
         src: ["assets/sounds/music.mp3"], // You need a music file
