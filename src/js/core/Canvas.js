@@ -17,12 +17,12 @@ class Canvas {
 
     // method to set the logical size of the canvas
     setCanvasSize() {
-        // get the actual rendered size of the canvas element
-        const width = Math.floor(window.innerWidth);
+        // Get the actual rendered size of the canvas container
+        const rect = this.canvas.getBoundingClientRect();
+        const width = Math.floor(rect.width);
+        const height = Math.floor(rect.height);
         
-        const height = Math.floor(width * (9/16));
-        
-        // set canvas logical size
+        // set canvas logical size to match display size (prevents pixelation)
         this.canvas.width = width;
         this.canvas.height = height;
         
