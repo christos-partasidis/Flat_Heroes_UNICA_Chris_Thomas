@@ -1,5 +1,6 @@
-// Enemy.js
+// entities/Enemy.js
 import Collision from "../physics/Collision.js";
+import Vector from "../physics/Vector.js";
 
 class Enemy {
   constructor(x, y, canvas) {
@@ -7,56 +8,52 @@ class Enemy {
     this.x = x;
     this.y = y;
 
-    // FIX: We use width/height now, NOT size
     this.width = 30;
     this.height = 30;
 
     this.color = "#FF0000";
-    this.speedX = 4;
-    this.speedY = 4;
+
+    // 1. Get a truly random 360-degree direction
+    const direction = Vector.randomDirection();
+
+    // 2. Set base speed with small random variance (e.g., 3.5 to 4.5)
+    const speedMag = 4 + (Math.random() - 0.5);
+
+    // 3. Calculate velocity vector
+    this.velocity = direction.mult(speedMag);
   }
 
   draw(ctx) {
     ctx.fillStyle = this.color;
-    // FIX: Use width/height here too
     ctx.fillRect(this.x, this.y, this.width, this.height);
   }
 
   update(walls) {
     // --- HORIZONTAL MOVEMENT ---
-    this.x += this.speedX;
+    this.x += this.velocity.x;
 
     for (const wall of walls) {
       if (Collision.checkRectCollision(this, wall)) {
-        this.speedX = -this.speedX;
+        this.velocity.x = -this.velocity.x;
 
-        // FIX: If speed is now negative (moving left), we hit the right side of a wall
-        if (this.speedX < 0) {
-          // Snap to left side of wall
-          // CRITICAL FIX: Use this.width, not this.size
+        if (this.velocity.x < 0) {
           this.x = wall.x - this.width;
         } else {
-          // Snap to right side of wall
           this.x = wall.x + wall.width;
         }
       }
     }
 
     // --- VERTICAL MOVEMENT ---
-    this.y += this.speedY;
+    this.y += this.velocity.y;
 
     for (const wall of walls) {
       if (Collision.checkRectCollision(this, wall)) {
-        this.speedY = -this.speedY;
+        this.velocity.y = -this.velocity.y;
 
-        if (this.speedY < 0) {
-          // We are now moving up, so we must have hit the floor
-          // Snap to top of wall
-          // CRITICAL FIX: Use this.height, not this.size
+        if (this.velocity.y < 0) {
           this.y = wall.y - this.height;
         } else {
-          // We are now moving down, so we must have hit the ceiling
-          // Snap to bottom of wall
           this.y = wall.y + wall.height;
         }
       }

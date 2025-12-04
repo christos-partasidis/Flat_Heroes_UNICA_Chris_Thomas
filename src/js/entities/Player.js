@@ -8,7 +8,7 @@ class Player {
     this.canvas = canvas;
 
     // Size of the player square
-    this.size = 22 ;
+    this.size = 22;
 
     // Start in the middle-ish
     this.x = canvas.width / 2 - this.size / 2;
@@ -113,15 +113,48 @@ class Player {
     }
 
     // 3. MOVE THE PLAYER
+    // 3. MOVE THE PLAYER
     if (this.isDashing) {
       // --- DASHING PHYSICS ---
       this.trail.push({ x: this.x, y: this.y, alpha: 1.0 });
-      // Move fast!
-      this.x += this.dashVelocity;
-      this.velocityY = 0; // No gravity while dashing!
 
-      // Add current position to trail for the cool effect
-      console.log("Pushing trail!", this.trail.length);
+      // 1. Calculate where we WANT to go
+      const nextX = this.x + this.dashVelocity;
+
+      // 2. Create a rectangle for that future position
+      const nextRect = {
+        x: nextX,
+        y: this.y,
+        width: this.size,
+        height: this.size,
+      };
+
+      // 3. Check if that future position hits ANY wall
+      let hitWall = false;
+      for (const wall of walls) {
+        if (Collision.checkRectCollision(nextRect, wall)) {
+          hitWall = true;
+          // We hit a wall! Stop dashing immediately and snap to the wall edge.
+          if (this.dashVelocity > 0) {
+            // Moving right -> hit left side of wall
+            this.x = wall.x - this.size;
+          } else if (this.dashVelocity < 0) {
+            // Moving left -> hit right side of wall
+            this.x = wall.x + wall.width;
+          }
+
+          // Cancel the dash
+          this.isDashing = false;
+          this.dashVelocity = 0;
+          break;
+        }
+      }
+
+      // 4. If we didn't hit a wall, move normally
+      if (!hitWall) {
+        this.x = nextX;
+        this.velocityY = 0; // No gravity while dashing!
+      }
 
       // Count down dash duration
       this.dashTimer--;
@@ -157,7 +190,13 @@ class Player {
       }
 
       // Apply Gravity
+      // Apply Gravity
       this.velocityY += this.gravity;
+
+      if (this.velocityY > 14) {
+        this.velocityY = 14;
+      }
+
       this.y += this.velocityY;
     }
 
@@ -218,4 +257,3 @@ class Player {
 }
 
 export default Player;
-
