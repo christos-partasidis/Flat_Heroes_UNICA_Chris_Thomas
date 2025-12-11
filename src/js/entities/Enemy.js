@@ -3,13 +3,15 @@ import Collision from "../physics/Collision.js";
 import Vector from "../physics/Vector.js";
 
 class Enemy {
-  constructor(x, y, canvas) {
+  constructor(x, y, canvas, width = 20, height = 15, destroyOnWall = false) {
     this.canvas = canvas;
     this.x = x;
     this.y = y;
 
-    this.width = 30;
-    this.height = 30;
+    this.width = width;
+    this.height = height;
+    this.destroyOnWall = destroyOnWall;
+    this.isDead = false;
 
     this.color = "#FF0000";
 
@@ -34,7 +36,12 @@ class Enemy {
 
     for (const wall of walls) {
       if (Collision.checkRectCollision(this, wall)) {
-        this.velocity.x = -this.velocity.x;
+        if (this.destroyOnWall) {
+          this.isDead = true;
+          return;
+        }
+
+        this.speedX = -this.speedX;
 
         if (this.velocity.x < 0) {
           this.x = wall.x - this.width;
@@ -49,7 +56,12 @@ class Enemy {
 
     for (const wall of walls) {
       if (Collision.checkRectCollision(this, wall)) {
-        this.velocity.y = -this.velocity.y;
+        if (this.destroyOnWall) {
+          this.isDead = true;
+          return;
+        }
+
+        this.speedY = -this.speedY;
 
         if (this.velocity.y < 0) {
           this.y = wall.y - this.height;

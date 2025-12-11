@@ -10,8 +10,8 @@ body{
 }
 
 .game-container {
-    width: 60vw; /* Increased from 50vw for slightly wider game */
-    height: 95vh; /* Changed from 80vh to 90vh for more height */
+    width: 60vw; 
+    height: 95vh; 
     display: flex;
     justify-content: center;
     align-items: center;
@@ -21,6 +21,7 @@ canvas {
     background: #A9B8B0;
     width: 100%;
     height: 100%;
+    cursor: pointer; /* Show pointer on menu screens */
 }
 
 .dev-toggle {
