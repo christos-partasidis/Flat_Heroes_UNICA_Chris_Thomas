@@ -114,71 +114,48 @@ class Player {
     }
 
     // 3. MOVE THE PLAYER
+    // 3. MOVE THE PLAYER
     if (this.isDashing) {
       // --- DASHING PHYSICS ---
       this.trail.push({ x: this.x, y: this.y, alpha: 1.0 });
-      // Move with collision checking to avoid tunneling through walls
-      const maxStep = 1; // pixels per sub-step (must be small to catch walls)
-      let remaining = Math.abs(this.dashVelocity);
-      const direction = Math.sign(this.dashVelocity);
-      
-      // Move step by step and check collisions
-      while (remaining > 0 && this.isDashing) {
-        const step = Math.min(remaining, maxStep);
-        const oldX = this.x;
-        this.x += direction * step;
-        
-        // Clamp to canvas bounds immediately
-        const leftWall = walls.find((w) => w.x === 0 && w.width < 50);
-        const rightWall = walls.find((w) => w.x + w.width === this.canvas.width && w.width < 50);
-        const leftLimit = leftWall ? leftWall.width : 0;
-        const rightLimit = rightWall ? rightWall.x - this.width : this.canvas.width - this.width;
-        
-        if (this.x < leftLimit || this.x > rightLimit) {
-          this.x = this.x < leftLimit ? leftLimit : rightLimit;
+
+      // 1. Calculate where we WANT to go
+      const nextX = this.x + this.dashVelocity;
+
+      // 2. Create a rectangle for that future position
+      const nextRect = {
+        x: nextX,
+        y: this.y,
+        width: this.size,
+        height: this.size,
+      };
+
+      // 3. Check if that future position hits ANY wall
+      let hitWall = false;
+      for (const wall of walls) {
+        if (Collision.checkRectCollision(nextRect, wall)) {
+          hitWall = true;
+          // We hit a wall! Stop dashing immediately and snap to the wall edge.
+          if (this.dashVelocity > 0) {
+            // Moving right -> hit left side of wall
+            this.x = wall.x - this.size;
+          } else if (this.dashVelocity < 0) {
+            // Moving left -> hit right side of wall
+            this.x = wall.x + wall.width;
+          }
+
+          // Cancel the dash
           this.isDashing = false;
           this.dashVelocity = 0;
-          this.collisions.left = this.x <= leftLimit;
-          this.collisions.right = this.x >= rightLimit;
           break;
         }
-        
-        // Check collision with all walls
-        let hitWall = false;
-        const playerRect = { x: this.x, y: this.y, width: this.width, height: this.height };
-        
-        for (const wall of walls) {
-          if (Collision.checkRectCollision(playerRect, wall)) {
-            // Calculate overlap on each side
-            const overlapLeft = this.x + this.width - wall.x;
-            const overlapRight = wall.x + wall.width - this.x;
-            
-            // Only treat as blocking if it's a side collision during horizontal movement
-            if (overlapLeft < overlapRight && direction > 0) {
-              // Hit left side of wall while moving right
-              this.x = wall.x - this.width;
-              this.collisions.right = true;
-              hitWall = true;
-            } else if (overlapRight < overlapLeft && direction < 0) {
-              // Hit right side of wall while moving left
-              this.x = wall.x + wall.width;
-              this.collisions.left = true;
-              hitWall = true;
-            }
-            
-            if (hitWall) {
-              this.isDashing = false;
-              this.dashVelocity = 0;
-              break;
-            }
-          }
-        }
-        
-        if (hitWall) break;
-        remaining -= step;
       }
 
-      this.velocityY = 0; // No gravity while dashing!
+      // 4. If we didn't hit a wall, move normally
+      if (!hitWall) {
+        this.x = nextX;
+        this.velocityY = 0; // No gravity while dashing!
+      }
 
       // Count down dash duration
       this.dashTimer--;
@@ -214,7 +191,13 @@ class Player {
       }
 
       // Apply Gravity
+      // Apply Gravity
       this.velocityY += this.gravity;
+
+      if (this.velocityY > 14) {
+        this.velocityY = 14;
+      }
+
       this.y += this.velocityY;
     }
 
@@ -275,4 +258,3 @@ class Player {
 }
 
 export default Player;
-

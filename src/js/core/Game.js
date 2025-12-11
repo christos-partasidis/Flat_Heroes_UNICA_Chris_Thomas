@@ -162,13 +162,40 @@ class Game {
   // Updated wall creation based on layout type
   createWalls() {
     const wallThickness = 15;
-    
-    // Base walls (always present)
-    const walls = [
-      new Wall(0, 0, this.canvas.width, wallThickness, "#FF7711"), // Top
-      new Wall(0, this.canvas.height - wallThickness, this.canvas.width, wallThickness, "#028368"), // Bottom
-      new Wall(0, 0, wallThickness, this.canvas.height, "#003C57"), // Left
-      new Wall(this.canvas.width - wallThickness, 0, wallThickness, this.canvas.height, "#CEEE00"), // Right
+
+    return [
+      // Top wall - Orange
+      new Wall(0, 0, this.canvas.width, wallThickness, "#FF7711"),
+
+      // Bottom wall - Green
+      new Wall(
+        0,
+        this.canvas.height - wallThickness,
+        this.canvas.width,
+        wallThickness,
+        "#028368",
+      ),
+
+      // Left wall - Blue
+      new Wall(0, 0, wallThickness, this.canvas.height, "#003C57"),
+
+      // Right wall - Yellow
+      new Wall(
+        this.canvas.width - wallThickness,
+        0,
+        wallThickness,
+        this.canvas.height,
+        "#CEEE00",
+      ),
+
+      // Middle Platform
+      new Wall(
+        wallThickness,
+        this.canvas.height * 0.5, // Lowered platform so it's reachable
+        (this.canvas.width / 2) * 1.25,
+        wallThickness,
+        "#028368",
+      ),
     ];
 
     // Add layout-specific walls by level number
@@ -279,11 +306,11 @@ class Game {
     });
   }
 
-  completeLevel(){
-    if(this.currentLevel == this.maxLevel){
+  completeLevel() {
+    if (this.currentLevel == this.maxLevel) {
       // Final Level Completed - Win Game
       this.gameOver(true);
-    }else{
+    } else {
       // Level Completed - Advance to Next Level
       this.isRunning = false;
       this.showLevelTransition();
@@ -291,12 +318,12 @@ class Game {
   }
 
   // This was suggested by AI (Tool: Claude Sonnet 4.5 integrated within VSCode + Auto Suggestions)
-  showLevelTransition(){
+  showLevelTransition() {
     const ctx = this.canvas.ctx;
 
     ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    
+
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
     ctx.font = "bold 50px Arial";
@@ -311,7 +338,7 @@ class Game {
     ctx.fillText(
       `Get ready for Level ${this.currentLevel + 1}`,
       this.canvas.width / 2,
-      this.canvas.height / 2 + 20
+      this.canvas.height / 2 + 20,
     );
 
     setTimeout(() => {
@@ -341,26 +368,52 @@ class Game {
     requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
   }
 
-  // AI generated method
+  // In Game.js, update spawnEnemiesForLevel()
+
   spawnEnemiesForLevel() {
     this.enemies = [];
-    
-    const levelConfig = LevelConfig.getLevel(this.currentLevel);
-    
-    if (levelConfig.enemies) {
-      levelConfig.enemies.forEach(config => {
-        // Convert relative coordinates (0-1) to canvas pixels
-        const x = config.x * this.canvas.width;
-        const y = config.y * this.canvas.height;
-        
-        const enemy = new Enemy(x, y, this.canvas, config.width, config.height, config.destroyOnWall);
-        
-        // Apply specific speed from config
-        enemy.speedX = config.speedX;
-        enemy.speedY = config.speedY;
-        
-        this.enemies.push(enemy);
-      });
+    const enemyCount = this.currentLevel;
+    const wallThickness = 15;
+    const enemySize = 30;
+    const minDistance = enemySize * 1.5;
+
+    // Helper to get random number in range
+    const randInRange = (min, max) => Math.random() * (max - min) + min;
+
+    for (let i = 0; i < enemyCount; i++) {
+      let attempts = 0;
+      let x, y;
+      let valid;
+
+      // --- POSITION RANDOMIZATION (Solves "Same Place" Issue) ---
+      do {
+        attempts++;
+        x = randInRange(
+          wallThickness,
+          this.canvas.width - wallThickness - enemySize,
+        );
+        y = randInRange(wallThickness, this.canvas.height - enemySize);
+
+        valid = true;
+        // Check against existing enemies to prevent overlap
+        for (const other of this.enemies) {
+          const dx = other.x - x;
+          const dy = other.y - y;
+          if (dx * dx + dy * dy < minDistance * minDistance) {
+            valid = false;
+            break;
+          }
+        }
+      } while (!valid && attempts < 50);
+
+      // Create enemy (Constructor now handles random direction!)
+      const enemy = new Enemy(x, y, this.canvas);
+
+      // Apply Level Speed Scaling
+      const speedMultiplier = 1 + (this.currentLevel - 1) * 0.2; // Lowered slightly for better balance
+      enemy.velocity.mult(speedMultiplier);
+
+      this.enemies.push(enemy);
     }
   }
 
@@ -454,16 +507,8 @@ class Game {
     ctx.font = "bold 24px Arial";
     ctx.textAlign = "left";
     // Show level and time
-    ctx.fillText(
-      `Level ${this.currentLevel}/${this.maxLevel}`,
-      20,
-      40
-    );
-    ctx.fillText(
-      `Time: ${Math.max(0, Math.ceil(this.timeLeft))}`,
-      20,
-      70
-    );
+    ctx.fillText(`Level ${this.currentLevel}/${this.maxLevel}`, 20, 40);
+    ctx.fillText(`Time: ${Math.max(0, Math.ceil(this.timeLeft))}`, 20, 70);
   }
 
   drawGameOverScreen(title, subtitle) {
@@ -519,7 +564,7 @@ class Game {
     const setupSlider = (sliderId, valueId, type) => {
       const slider = document.getElementById(sliderId);
       const valueDisplay = document.getElementById(valueId);
-      
+
       if (!slider || !valueDisplay) return;
 
       slider.addEventListener("input", (e) => {
