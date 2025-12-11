@@ -16,21 +16,8 @@ class Enemy {
     this.color = "#FF0000";
     this.isDead = false;
 
-    if (config.speedX !== undefined && config.speedY !== undefined) {
-      this.speedX = config.speedX;
-      this.speedY = config.speedY;
-    } else {
-      // 1. Get a truly random 360-degree direction
-      const direction = Vector.randomDirection();
-
-      // 2. Set base speed with small random variance (e.g., 3.5 to 4.5)
-      const speedMag = 4 + (Math.random() - 0.5);
-
-      // 3. Calculate velocity vector
-      const velocity = direction.mult(speedMag);
-      this.speedX = velocity.x;
-      this.speedY = velocity.y;
-    }
+    this.speedX = config.speedX || 0;
+    this.speedY = config.speedY || 0;
   }
 
   draw(ctx) {

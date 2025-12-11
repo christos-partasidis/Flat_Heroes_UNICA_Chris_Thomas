@@ -8,11 +8,44 @@ class LevelConfig {
         x: (i + 0.5) / count, // Distribute evenly across width
         y: 0.05, // Start near top
         speedX: 0,
-        speedY: 5, // Move down
+        speedY: 6, // Move down
         width: 7,
         height: 30,
         destroyOnWall: true,
         delay: i * 10, // Domino effect delay
+      });
+    }
+    return enemies;
+  }
+
+  static getLevel2Enemies() {
+    const enemies = [];
+    const count = 40; // Total pairs
+    const startDelay = 180; // 3 seconds at 60fps
+
+    for (let i = 0; i < count; i++) {
+      // Top enemy (Moves Down)
+      enemies.push({
+        x: (i + 0.5) / count,
+        y: 0.05,
+        speedX: 0,
+        speedY: 6,
+        width: 7,
+        height: 30,
+        destroyOnWall: true,
+        delay: startDelay + i * 10,
+      });
+
+      // Bottom enemy (Moves Up)
+      enemies.push({
+        x: (i + 0.5) / count,
+        y: 0.9, 
+        speedX: 0,
+        speedY: -6,
+        width: 7,
+        height: 30,
+        destroyOnWall: true,
+        delay: startDelay + i * 10,
       });
     }
     return enemies;
@@ -29,12 +62,10 @@ class LevelConfig {
       ]
     },
     2: {
-      duration: 20,
+      duration: 12,
       backgroundColor: "#A9B8B0",
       description: "Multiple enemies appear",
-      enemies: [
-
-      ],
+      get enemies() { return LevelConfig.getLevel2Enemies(); },
       walls: (w, h, t) => [
         { x: t, y: h * 0.5, width: w * 0.33, height: t, color: "#028368" },
         { x: w * 0.67, y: h * 0.5, width: w * 0.33 - t, height: t, color: "#028368" },
