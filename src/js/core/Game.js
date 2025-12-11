@@ -7,6 +7,7 @@ import Wall from "../entities/Wall.js";
 import Collision from "../physics/Collision.js";
 import Enemy from "../entities/Enemy.js";
 import SoundManager from "../core/SoundManager.js";
+import LevelConfig from "../utils/LevelConfig.js";
 
 class Game {
   constructor() {
@@ -76,6 +77,18 @@ class Game {
         <div class="glass-box">
             <h1>FLAT HEROES</h1>
             <h2 style="color: #eee; margin-bottom: 30px;">Survive the Chaos</h2>
+            
+            <div style="margin-bottom: 20px;">
+                <label for="levelSelect" style="color: white; margin-right: 10px;">Start Level:</label>
+                <select id="levelSelect" style="padding: 5px; border-radius: 5px;">
+                    <option value="1">Level 1</option>
+                    <option value="2">Level 2</option>
+                    <option value="3">Level 3</option>
+                    <option value="4">Level 4</option>
+                    <option value="5">Level 5</option>
+                </select>
+            </div>
+
             <button id="startBtn">PLAY NOW</button>
         </div>
     `;
@@ -116,6 +129,13 @@ class Game {
     if (startBtn) {
       startBtn.addEventListener("click", () => {
         if (!this.gameHasStarted) {
+          const levelSelect = document.getElementById("levelSelect");
+          if (levelSelect) {
+            this.currentLevel = parseInt(levelSelect.value);
+            // Reset entities to ensure correct level data is loaded
+            this.resetEntities();
+          }
+
           this.gameHasStarted = true;
           this.startScreen.classList.add("hidden");
           this.hud.classList.remove("hidden");
@@ -128,20 +148,40 @@ class Game {
 
   createWalls() {
     const wallThickness = 15;
-    // FIXED: Use logical dimensions (not scaled buffer dimensions)
-    const w = this.canvas.width;
-    const h = this.canvas.height;
-
-    // Safety check if canvas size is 0
-    if (w === 0 || h === 0) return [];
-
-    return [
-      new Wall(0, 0, w, wallThickness, "#FF7711"), // Top
-      new Wall(0, h - wallThickness, w, wallThickness, "#028368"), // Bottom
-      new Wall(0, 0, wallThickness, h, "#003C57"), // Left
-      new Wall(w - wallThickness, 0, wallThickness, h, "#CEEE00"), // Right
-      new Wall(wallThickness, h * 0.5, (w / 2) * 1.5, wallThickness, "#028368"), // Middle
+    // Base walls (always present)
+    const walls = [
+      new Wall(0, 0, this.canvas.width, wallThickness, "#FF7711"), // Top
+      new Wall(
+        0,
+        this.canvas.height - wallThickness,
+        this.canvas.width,
+        wallThickness,
+        "#028368",
+      ), // Bottom
+      new Wall(0, 0, wallThickness, this.canvas.height, "#003C57"), // Left
+      new Wall(
+        this.canvas.width - wallThickness,
+        0,
+        wallThickness,
+        this.canvas.height,
+        "#CEEE00",
+      ), // Right
     ];
+
+    // Add layout-specific walls from LevelConfig
+    const levelData = LevelConfig.getLevel(this.currentLevel);
+    if (levelData && levelData.walls) {
+      const levelWalls = levelData.walls(
+        this.canvas.width,
+        this.canvas.height,
+        wallThickness,
+      );
+      levelWalls.forEach((w) => {
+        walls.push(new Wall(w.x, w.y, w.width, w.height, w.color));
+      });
+    }
+
+    return walls;
   }
 
   start() {
@@ -227,60 +267,20 @@ class Game {
 
   spawnEnemiesForLevel() {
     this.enemies = [];
-    const count = this.currentLevel;
-    const minDistanceFromPlayer = 150; // Minimum distance from player
-    const enemySize = 30;
-    const minDistanceBetweenEnemies = enemySize * 1.5;
+    const levelData = LevelConfig.getLevel(this.currentLevel);
+    const enemyConfigs = levelData.enemies;
 
-    for (let i = 0; i < count; i++) {
-      let x, y;
-      let attempts = 0;
-      let validPosition = false;
+    if (!enemyConfigs) return;
 
-      // Keep trying until we find a valid position
-      while (!validPosition && attempts < 100) {
-        attempts++;
+    enemyConfigs.forEach((config) => {
+      // Convert relative coordinates (0.0-1.0) to absolute pixels
+      const x = config.x * this.canvas.width;
+      const y = config.y * this.canvas.height;
 
-        // Random position
-        x = Math.random() * (this.canvas.width - 100) + 50;
-        y = Math.random() * (this.canvas.height / 2);
-
-        // Calculate distance from player
-        const dx = x - this.player.x;
-        const dy = y - this.player.y;
-        const distanceFromPlayer = Math.sqrt(dx * dx + dy * dy);
-
-        // Check if far enough from player
-        if (distanceFromPlayer < minDistanceFromPlayer) {
-          continue;
-        }
-
-        // Check if far enough from other enemies
-        validPosition = true;
-        for (const other of this.enemies) {
-          const dxEnemy = other.x - x;
-          const dyEnemy = other.y - y;
-          const distanceFromEnemy = Math.sqrt(
-            dxEnemy * dxEnemy + dyEnemy * dyEnemy,
-          );
-
-          if (distanceFromEnemy < minDistanceBetweenEnemies) {
-            validPosition = false;
-            break;
-          }
-        }
-      }
-
-      const enemy = new Enemy(x, y, this.canvas);
-      const speedMult = 1 + this.currentLevel * 0.2;
-
-      // Safety for velocity
-      if (enemy.velocity) {
-        enemy.velocity.mult(speedMult);
-      }
-
+      // Create enemy with config
+      const enemy = new Enemy(x, y, this.canvas, config);
       this.enemies.push(enemy);
-    }
+    });
   }
 
   gameOver(won) {
@@ -327,10 +327,18 @@ class Game {
     this.walls.forEach((w) => w.draw(this.canvas.ctx));
     this.player.update(this.input, this.walls);
     this.player.draw(this.canvas.ctx);
-    this.enemies.forEach((e) => {
-      e.update(this.walls);
-      e.draw(this.canvas.ctx);
-    });
+
+    // Update & Draw Enemies
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      const enemy = this.enemies[i];
+      enemy.update(this.walls);
+
+      if (enemy.isDead) {
+        this.enemies.splice(i, 1);
+      } else {
+        enemy.draw(this.canvas.ctx);
+      }
+    }
 
     this.checkGameStatus();
     this.updateHUD();

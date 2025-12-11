@@ -22,15 +22,22 @@ class LevelConfig {
       duration: 15,
       backgroundColor: "#A9B8B0",
       description: "Rain of arrows",
-      get enemies() { return LevelConfig.getLevel1Enemies(); }
+      get enemies() { return LevelConfig.getLevel1Enemies(); },
+      walls: (w, h, t) => [
+        { x: t, y: h * 0.5, width: w * 0.75, height: t, color: "#028368" }
+      ]
     },
     2: {
       duration: 20,
       backgroundColor: "#A9B8B0",
       description: "Multiple enemies appear",
       enemies: [
-        { x: 0.1, y: 0.1, speedX: 4, speedY: 4 },
-        { x: 0.9, y: 0.1, speedX: -4, speedY: 4 }
+
+      ],
+      walls: (w, h, t) => [
+        { x: t, y: h * 0.5, width: w * 0.33, height: t, color: "#028368" },
+        { x: w * 0.67, y: h * 0.5, width: w * 0.33 - t, height: t, color: "#028368" },
+        { x: w * 0.4, y: h * 0.25, width: w * 0.6 - t, height: t, color: "#028368" }
       ]
     },
     3: {
@@ -38,19 +45,24 @@ class LevelConfig {
       backgroundColor: "#A9B8B0",
       description: "Navigate through obstacles",
       enemies: [
-        { x: 0.1, y: 0.1, speedX: 5, speedY: 5 },
-        { x: 0.5, y: 0.1, speedX: 0, speedY: 6 },
-        { x: 0.9, y: 0.1, speedX: -5, speedY: 5 }
-      ]
+
+      ],
+      walls: (w, h, t) => []
     },
     4: {
       duration: 20,
       backgroundColor: "#A9B8B0",
       description: "Fast enemies, minimal cover",
       enemies: [
-        { x: 0.1, y: 0.1, speedX: 6, speedY: 6 },
-        { x: 0.9, y: 0.9, speedX: -6, speedY: -6 },
-        { x: 0.5, y: 0.5, speedX: 6, speedY: -6 }
+
+      ],
+      walls: (w, h, t) => [
+        { x: w * 0.625, y: h * 0.9, width: w * 0.25, height: t, color: "#028368" },
+        { x: w * 0.125, y: h * 0.7, width: w * 0.25, height: t, color: "#028368" },
+        { x: w * 0.625, y: h * 0.5, width: w * 0.25, height: t, color: "#028368" },
+        { x: w * 0.125, y: h * 0.3, width: w * 0.25, height: t, color: "#028368" },
+        { x: w * 0.85, y: h * 0.15, width: t, height: h * 0.15, color: "#028368" },
+        { x: w * 0.70, y: h * 0.3, width: w * 0.15 + t, height: t, color: "#028368" }
       ]
     },
     5: {
@@ -58,11 +70,18 @@ class LevelConfig {
       backgroundColor: "#A9B8B0",
       description: "Survive the ultimate challenge",
       enemies: [
-        { x: 0.1, y: 0.1, speedX: 5, speedY: 5 },
-        { x: 0.9, y: 0.1, speedX: -5, speedY: 5 },
-        { x: 0.1, y: 0.9, speedX: 5, speedY: -5 },
-        { x: 0.9, y: 0.9, speedX: -5, speedY: -5 },
-        { x: 0.5, y: 0.5, speedX: 0, speedY: 7 }
+        // { x: 0.1, y: 0.1, speedX: 5, speedY: 5 },
+        // { x: 0.9, y: 0.1, speedX: -5, speedY: 5 },
+        // { x: 0.1, y: 0.9, speedX: 5, speedY: -5 },
+        // { x: 0.9, y: 0.9, speedX: -5, speedY: -5 },
+        // { x: 0.5, y: 0.5, speedX: 0, speedY: 7 }
+      ],
+      walls: (w, h, t) => [
+        { x: w * 0.2, y: h * 0.15, width: w * 0.75, height: t, color: "#028368" },
+        { x: w * 0.2, y: h * 0.5, width: w * 0.6, height: t, color: "#028368" },
+        { x: w * 0.05, y: h * 0.85, width: w * 0.75, height: t, color: "#028368" },
+        { x: w * 0.10, y: h * 0.15, width: t, height: h * 0.25, color: "#028368" },
+        { x: w * 0.90, y: h * 0.55, width: t, height: h * 0.25, color: "#028368" }
       ]
     }
   };
