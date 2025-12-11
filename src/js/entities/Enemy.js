@@ -2,14 +2,15 @@
 import Collision from "../physics/Collision.js";
 
 class Enemy {
-  constructor(x, y, canvas) {
+  constructor(x, y, canvas, width = 20, height = 15, destroyOnWall = false) {
     this.canvas = canvas;
     this.x = x;
     this.y = y;
 
-    // FIX: We use width/height now, NOT size
-    this.width = 30;
-    this.height = 30;
+    this.width = width;
+    this.height = height;
+    this.destroyOnWall = destroyOnWall;
+    this.isDead = false;
 
     this.color = "#FF0000";
     this.speedX = 4;
@@ -28,6 +29,11 @@ class Enemy {
 
     for (const wall of walls) {
       if (Collision.checkRectCollision(this, wall)) {
+        if (this.destroyOnWall) {
+          this.isDead = true;
+          return;
+        }
+
         this.speedX = -this.speedX;
 
         // FIX: If speed is now negative (moving left), we hit the right side of a wall
@@ -47,6 +53,11 @@ class Enemy {
 
     for (const wall of walls) {
       if (Collision.checkRectCollision(this, wall)) {
+        if (this.destroyOnWall) {
+          this.isDead = true;
+          return;
+        }
+
         this.speedY = -this.speedY;
 
         if (this.speedY < 0) {

@@ -6,6 +6,7 @@ import Wall from "../entities/Wall.js";
 import Collision from "../physics/Collision.js";
 import Enemy from "../entities/Enemy.js";
 import SoundManager from "../core/SoundManager.js";
+import LevelConfig from "../utils/LevelConfig.js";
 
 class Game {
   constructor() {
@@ -16,12 +17,12 @@ class Game {
     this.isRunning = false;
     this.isGameOver = false;
     this.hasWon = false;
-    this.gameHasStarted = false; // Waits for click
+    this.gameHasStarted = false; 
 
     // Level System
     this.currentLevel = 1;
-    this.maxLevel = 5; // total number of levels
-    this.levelDuration = 10; // duration for each level in seconds
+    this.selectedLevel = 1; 
+    this.maxLevel = LevelConfig.getTotalLevels();
 
     // Time Tracking
     this.lastTime = 0;
@@ -59,87 +60,179 @@ class Game {
     ctx.fillStyle = "#003C57";
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Draw Start Text
+    // Draw Title
     ctx.fillStyle = "white";
     ctx.textAlign = "center";
+    ctx.font = "bold 50px Arial";
+    ctx.fillText("FLAT HEROES", this.canvas.width / 2, this.canvas.height * 0.2);
 
-    ctx.font = "bold 40px Arial";
-    ctx.fillText(
-      "CLICK TO START",
-      this.canvas.width / 2,
-      this.canvas.height / 2,
+    // Draw Level Buttons
+    this.drawLevelButtons(ctx);
+
+    // Draw Start Button
+    ctx.font = "bold 25px Arial";
+    ctx.fillStyle = "#028368";
+    ctx.fillRect(
+      this.canvas.width / 2 - 100,
+      this.canvas.height * 0.85,
+      200,
+      50
     );
+    ctx.fillStyle = "white";
+    ctx.fillText("START GAME", this.canvas.width / 2, this.canvas.height * 0.85 + 35);
 
-    ctx.font = "20px Arial";
-    ctx.fillText(
-      "Survive for 10 seconds!",
-      this.canvas.width / 2,
-      this.canvas.height / 2 + 40,
-    );
-
-    // Wait for user interaction to unlock Audio and Start
-    window.addEventListener(
-      "click",
-      () => {
-        if (!this.gameHasStarted) {
-          this.gameHasStarted = true;
-
-          // Resume Audio Context (Browser Requirement)
-          if (typeof Howler !== "undefined" && Howler.ctx) {
-            Howler.ctx.resume().then(() => {
-              console.log("Audio Context Resumed");
-            });
-          }
-
-          this.start();
-        }
-      },
-      { once: true },
-    );
+    // Add click listeners
+    this.canvas.canvas.addEventListener("click", (e) => this.handleMenuClick(e), { once: false });
   }
 
-  // Define the level layout
+  drawLevelButtons(ctx) {
+    const buttonWidth = 80;
+    const buttonHeight = 80;
+    const spacing = 20;
+    const totalWidth = (buttonWidth + spacing) * this.maxLevel - spacing;
+    const startX = (this.canvas.width - totalWidth) / 2;
+    const startY = this.canvas.height * 0.5;
+
+    for (let i = 1; i <= this.maxLevel; i++) {
+      const x = startX + (i - 1) * (buttonWidth + spacing);
+      
+      // Button background
+      ctx.fillStyle = this.selectedLevel === i ? "#FF7711" : "#028368";
+      ctx.fillRect(x, startY, buttonWidth, buttonHeight);
+
+      // Level number
+      ctx.fillStyle = "white";
+      ctx.font = "bold 30px Arial";
+      ctx.fillText(i.toString(), x + buttonWidth / 2, startY + 45);
+    }
+  }
+
+  handleMenuClick(e) {
+    if (this.gameHasStarted) return;
+
+    const rect = this.canvas.canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    // Check level button clicks
+    const buttonWidth = 80;
+    const buttonHeight = 80;
+    const spacing = 20;
+    const totalWidth = (buttonWidth + spacing) * this.maxLevel - spacing;
+    const startX = (this.canvas.width - totalWidth) / 2;
+    const startY = this.canvas.height * 0.5;
+
+    for (let i = 1; i <= this.maxLevel; i++) {
+      const x = startX + (i - 1) * (buttonWidth + spacing);
+      if (
+        clickX >= x &&
+        clickX <= x + buttonWidth &&
+        clickY >= startY &&
+        clickY <= startY + buttonHeight
+      ) {
+        this.selectedLevel = i;
+        this.init(); // Redraw menu with updated selection
+        return;
+      }
+    }
+
+    // Check start button click
+    const startBtnX = this.canvas.width / 2 - 100;
+    const startBtnY = this.canvas.height * 0.85;
+    if (
+      clickX >= startBtnX &&
+      clickX <= startBtnX + 200 &&
+      clickY >= startBtnY &&
+      clickY <= startBtnY + 50
+    ) {
+      this.gameHasStarted = true;
+      this.currentLevel = this.selectedLevel;
+
+      // Resume Audio Context
+      if (typeof Howler !== "undefined" && Howler.ctx) {
+        Howler.ctx.resume().then(() => {
+          console.log("Audio Context Resumed");
+        });
+      }
+
+      this.start();
+    }
+  }
+
+  // Updated wall creation based on layout type
   createWalls() {
     const wallThickness = 15;
-
-    return [
-      // Top wall - Orange
-      new Wall(0, 0, this.canvas.width, wallThickness, "#FF7711"),
-
-      // Bottom wall - Green
-      new Wall(
-        0,
-        this.canvas.height - wallThickness,
-        this.canvas.width,
-        wallThickness,
-        "#028368",
-      ),
-
-      // Left wall - Blue
-      new Wall(0, 0, wallThickness, this.canvas.height, "#003C57"),
-
-      // Right wall - Yellow
-      new Wall(
-        this.canvas.width - wallThickness,
-        0,
-        wallThickness,
-        this.canvas.height,
-        "#CEEE00",
-      ),
-
-      // Middle Platform
-      new Wall(
-        wallThickness,
-        this.canvas.height * 0.5, // Lowered platform so it's reachable
-        (this.canvas.width / 2) * 1.5,
-        wallThickness,
-        "#028368",
-      ),
+    
+    // Base walls (always present)
+    const walls = [
+      new Wall(0, 0, this.canvas.width, wallThickness, "#FF7711"), // Top
+      new Wall(0, this.canvas.height - wallThickness, this.canvas.width, wallThickness, "#028368"), // Bottom
+      new Wall(0, 0, wallThickness, this.canvas.height, "#003C57"), // Left
+      new Wall(this.canvas.width - wallThickness, 0, wallThickness, this.canvas.height, "#CEEE00"), // Right
     ];
+
+    // Add layout-specific walls by level number
+    switch (this.currentLevel) {
+      case 1:
+        walls.push(
+          new Wall(wallThickness, this.canvas.height * 0.5, this.canvas.width * 0.75, wallThickness, "#028368")
+        );
+        break;
+
+      case 2:
+        walls.push(
+          
+          new Wall(wallThickness, this.canvas.height * 0.5, this.canvas.width * 0.33, wallThickness, "#830270ff"),
+          new Wall(this.canvas.width * 0.67, this.canvas.height * 0.5, this.canvas.width * 0.33 - wallThickness, wallThickness, "#831302ff"),
+          new Wall(this.canvas.width * 0.4, this.canvas.height * 0.25, this.canvas.width * 0.6 - wallThickness, wallThickness, "#028368")
+        );
+        break;
+
+      case 3:
+        // No walls for level 3
+        break;
+
+      case 4:
+        walls.push(
+          
+          new Wall(this.canvas.width * 0.625, this.canvas.height * 0.9, this.canvas.width * 0.25, wallThickness, "#028368"),
+          new Wall(this.canvas.width * 0.125, this.canvas.height * 0.7, this.canvas.width * 0.25, wallThickness, "#028368"),
+          new Wall(this.canvas.width * 0.625, this.canvas.height * 0.5, this.canvas.width * 0.25, wallThickness, "#028368"),
+          new Wall(this.canvas.width * 0.125, this.canvas.height * 0.3, this.canvas.width * 0.25, wallThickness, "#028368"),
+          new Wall(this.canvas.width * 0.85, this.canvas.height * 0.15, wallThickness, this.canvas.height * 0.15, "#028368"), 
+          new Wall(this.canvas.width * 0.70, this.canvas.height * 0.3, this.canvas.width * 0.15 + wallThickness, wallThickness, "#028368")
+        );
+        break;
+
+      case 5:
+        walls.push(
+          
+          new Wall(this.canvas.width * 0.2, this.canvas.height * 0.15, this.canvas.width * 0.75, wallThickness, "#028368"),
+          new Wall(this.canvas.width * 0.2, this.canvas.height * 0.5, this.canvas.width * 0.6, wallThickness, "#028368"),
+          new Wall(this.canvas.width * 0.05, this.canvas.height * 0.85, this.canvas.width * 0.75, wallThickness, "#028368"),
+          new Wall(this.canvas.width * 0.10, this.canvas.height * 0.15, wallThickness, this.canvas.height * 0.25, "#028368"),
+          new Wall(this.canvas.width * 0.90, this.canvas.height * 0.55, wallThickness, this.canvas.height * 0.25, "#028368")
+        );
+        break;
+    }
+
+    return walls;
   }
 
   start() {
     console.log("Game Loop Starting...");
+    
+    // Load level configuration
+    const levelConfig = LevelConfig.getLevel(this.currentLevel);
+    this.levelDuration = levelConfig.duration;
+    this.timeLeft = this.levelDuration;
+
+    // Reset player/enemies so selected level settings apply before the loop starts
+    this.resetEntities();
+    
+    // Recreate walls for selected level
+    this.walls = this.createWalls();
+    
     this.isRunning = true;
     this.lastTime = performance.now();
 
@@ -157,7 +250,6 @@ class Game {
     this.currentLevel = 1;
     this.timeLeft = this.levelDuration;
 
-    this.resetEntities();
     this.start();
   }
 
@@ -175,8 +267,8 @@ class Game {
     const playerRect = {
       x: this.player.x,
       y: this.player.y,
-      width: this.player.size,
-      height: this.player.size,
+      width: this.player.width,
+      height: this.player.height,
     };
 
     this.enemies.forEach((enemy) => {
@@ -227,18 +319,23 @@ class Game {
     }, 3000); // 3 second delay
   }
 
-  nextLevel(){
+  nextLevel() {
     this.currentLevel++;
+    
+    const levelConfig = LevelConfig.getLevel(this.currentLevel);
+    this.levelDuration = levelConfig.duration;
     this.timeLeft = this.levelDuration;
     
+    // Recreate walls for new level
+    this.walls = this.createWalls();
+    
     // Reset player position
-    this.player.x = this.canvas.width / 2 - this.player.size / 2;
-    this.player.y = this.canvas.height * 0.25 - this.player.size / 2;
+    this.player.x = this.canvas.width / 2 - this.player.width / 2;
+    this.player.y = this.canvas.height * 0.25 - this.player.height / 2;
     this.player.velocityY = 0;
 
     this.spawnEnemiesForLevel();
 
-    // Resume game loop
     this.isRunning = true;
     this.lastTime = performance.now();
     requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
@@ -246,29 +343,28 @@ class Game {
 
   // AI generated method
   spawnEnemiesForLevel() {
-    // Clear existing enemies
     this.enemies = [];
     
-    // Spawn more enemies based on level (1 enemy per level)
-    const enemyCount = this.currentLevel;
+    const levelConfig = LevelConfig.getLevel(this.currentLevel);
     
-    for (let i = 0; i < enemyCount; i++) {
-      // Spawn in top left corner with spacing between multiple enemies
-      const x = 50 + (i * 40); // Offset horizontally for multiple enemies
-      const y = 50 + (i * 40); // Offset vertically for multiple enemies
-      
-      const enemy = new Enemy(x, y, this.canvas);
-      
-      // Make enemies faster in later levels
-      const speedMultiplier = 1 + (this.currentLevel - 1) * 0.3;
-      enemy.speedX *= speedMultiplier;
-      enemy.speedY *= speedMultiplier;
-      
-      this.enemies.push(enemy);
+    if (levelConfig.enemies) {
+      levelConfig.enemies.forEach(config => {
+        // Convert relative coordinates (0-1) to canvas pixels
+        const x = config.x * this.canvas.width;
+        const y = config.y * this.canvas.height;
+        
+        const enemy = new Enemy(x, y, this.canvas, config.width, config.height, config.destroyOnWall);
+        
+        // Apply specific speed from config
+        enemy.speedX = config.speedX;
+        enemy.speedY = config.speedY;
+        
+        this.enemies.push(enemy);
+      });
     }
   }
-  
 
+  // game over logic
   gameOver(won) {
     this.isRunning = false; // Stop the loop
     this.isGameOver = true;
@@ -294,20 +390,24 @@ class Game {
 
   // Main Game Loop
   gameLoop(timestamp) {
-    // If not running, stop the loop
     if (!this.isRunning) return;
 
-    // Calculate deltaTime (in seconds)
     const deltaTime = (timestamp - this.lastTime) / 1000;
     this.lastTime = timestamp;
 
-    // Prevent huge time jumps if tab was inactive
     if (deltaTime < 0.1) {
       this.timeLeft -= deltaTime;
     }
 
-    // --- UPDATE STEP ---
+    // Get level config for background color
+    const levelConfig = LevelConfig.getLevel(this.currentLevel);
+    
+    // Clear canvas once
     this.canvas.clear();
+    
+    // Draw level-specific background
+    this.canvas.ctx.fillStyle = levelConfig.backgroundColor;
+    this.canvas.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     // Update & Draw Walls
     this.walls.forEach((wall) => wall.draw(this.canvas.ctx));
@@ -317,10 +417,16 @@ class Game {
     this.player.draw(this.canvas.ctx);
 
     // Update & Draw Enemies
-    this.enemies.forEach((enemy) => {
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      const enemy = this.enemies[i];
       enemy.update(this.walls);
-      enemy.draw(this.canvas.ctx);
-    });
+      
+      if (enemy.isDead) {
+        this.enemies.splice(i, 1);
+      } else {
+        enemy.draw(this.canvas.ctx);
+      }
+    }
 
     // Check Win/Lose
     this.checkGameStatus();

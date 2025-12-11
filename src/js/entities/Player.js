@@ -7,12 +7,13 @@ class Player {
     // I need the canvas to know how big the screen is!
     this.canvas = canvas;
 
-    // Size of the player square
-    this.size = 22 ;
+    // Size of the player square (kept consistent across logic)
+    this.width = 30;
+    this.height = 30;
 
     // Start in the middle-ish
-    this.x = canvas.width / 2 - this.size / 2;
-    this.y = canvas.height * 0.25 - this.size / 2;
+    this.x = canvas.width / 2 - this.width / 2;
+    this.y = canvas.height * 0.25 - this.height / 2;
 
     // Colors and speed
     this.color = "#FF7711";
@@ -54,7 +55,7 @@ class Player {
       // Debug: Solid Red, no alpha
       ctx.fillStyle = "red";
       ctx.globalAlpha = 1.0;
-      ctx.fillRect(pos.x, pos.y, this.size, this.size);
+      ctx.fillRect(pos.x, pos.y, this.width, this.height);
 
       // Decrease life logic for testing
       pos.life--;
@@ -68,7 +69,7 @@ class Player {
     // Flash white if dashing, otherwise normal color
     ctx.fillStyle = this.isDashing ? "#FFFFFF" : this.color;
     //ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(this.x, this.y, this.size, this.size);
+    ctx.fillRect(this.x, this.y, this.width, this.height);
   }
 
   update(input, walls) {
@@ -116,12 +117,68 @@ class Player {
     if (this.isDashing) {
       // --- DASHING PHYSICS ---
       this.trail.push({ x: this.x, y: this.y, alpha: 1.0 });
-      // Move fast!
-      this.x += this.dashVelocity;
-      this.velocityY = 0; // No gravity while dashing!
+      // Move with collision checking to avoid tunneling through walls
+      const maxStep = 1; // pixels per sub-step (must be small to catch walls)
+      let remaining = Math.abs(this.dashVelocity);
+      const direction = Math.sign(this.dashVelocity);
+      
+      // Move step by step and check collisions
+      while (remaining > 0 && this.isDashing) {
+        const step = Math.min(remaining, maxStep);
+        const oldX = this.x;
+        this.x += direction * step;
+        
+        // Clamp to canvas bounds immediately
+        const leftWall = walls.find((w) => w.x === 0 && w.width < 50);
+        const rightWall = walls.find((w) => w.x + w.width === this.canvas.width && w.width < 50);
+        const leftLimit = leftWall ? leftWall.width : 0;
+        const rightLimit = rightWall ? rightWall.x - this.width : this.canvas.width - this.width;
+        
+        if (this.x < leftLimit || this.x > rightLimit) {
+          this.x = this.x < leftLimit ? leftLimit : rightLimit;
+          this.isDashing = false;
+          this.dashVelocity = 0;
+          this.collisions.left = this.x <= leftLimit;
+          this.collisions.right = this.x >= rightLimit;
+          break;
+        }
+        
+        // Check collision with all walls
+        let hitWall = false;
+        const playerRect = { x: this.x, y: this.y, width: this.width, height: this.height };
+        
+        for (const wall of walls) {
+          if (Collision.checkRectCollision(playerRect, wall)) {
+            // Calculate overlap on each side
+            const overlapLeft = this.x + this.width - wall.x;
+            const overlapRight = wall.x + wall.width - this.x;
+            
+            // Only treat as blocking if it's a side collision during horizontal movement
+            if (overlapLeft < overlapRight && direction > 0) {
+              // Hit left side of wall while moving right
+              this.x = wall.x - this.width;
+              this.collisions.right = true;
+              hitWall = true;
+            } else if (overlapRight < overlapLeft && direction < 0) {
+              // Hit right side of wall while moving left
+              this.x = wall.x + wall.width;
+              this.collisions.left = true;
+              hitWall = true;
+            }
+            
+            if (hitWall) {
+              this.isDashing = false;
+              this.dashVelocity = 0;
+              break;
+            }
+          }
+        }
+        
+        if (hitWall) break;
+        remaining -= step;
+      }
 
-      // Add current position to trail for the cool effect
-      console.log("Pushing trail!", this.trail.length);
+      this.velocityY = 0; // No gravity while dashing!
 
       // Count down dash duration
       this.dashTimer--;
@@ -166,7 +223,7 @@ class Player {
     walls.forEach((wall) => {
       if (
         Collision.checkRectCollision(
-          { x: this.x, y: this.y, width: this.size, height: this.size },
+          { x: this.x, y: this.y, width: this.width, height: this.height },
           wall,
         )
       ) {
@@ -175,9 +232,9 @@ class Player {
         // and choose the smallest overlap as the collision side.
 
         // Calculate how far we are inside the wall on each side
-        const overlapLeft = this.x + this.size - wall.x;
+        const overlapLeft = this.x + this.width - wall.x;
         const overlapRight = wall.x + wall.width - this.x;
-        const overlapTop = this.y + this.size - wall.y;
+        const overlapTop = this.y + this.height - wall.y;
         const overlapBottom = wall.y + wall.height - this.y;
 
         // Find the smallest overlap
@@ -192,7 +249,7 @@ class Player {
           // HIT TOP of wall (It's a floor!)
           // Only count as floor if we are falling down (velocityY >= 0)
           if (this.velocityY >= 0) {
-            this.y = wall.y - this.size;
+            this.y = wall.y - this.height;
             this.velocityY = 0;
             this.onGround = true;
             this.collisions.bottom = true;
@@ -205,7 +262,7 @@ class Player {
           this.collisions.top = true;
         } else if (minOverlap === overlapLeft) {
           // HIT LEFT side of wall
-          this.x = wall.x - this.size;
+          this.x = wall.x - this.width;
           this.collisions.right = true;
         } else if (minOverlap === overlapRight) {
           // HIT RIGHT side of wall
