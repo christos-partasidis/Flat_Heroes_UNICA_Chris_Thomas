@@ -2,16 +2,17 @@
 class LevelConfig {
   static getLevel1Enemies() {
     const enemies = [];
-    const count = 30;
+    const count = 60;
     for (let i = 0; i < count; i++) {
       enemies.push({
         x: (i + 0.5) / count, // Distribute evenly across width
         y: 0.05, // Start near top
         speedX: 0,
-        speedY: 3, // Move down
+        speedY: 5, // Move down
         width: 7,
         height: 30,
-        destroyOnWall: true
+        destroyOnWall: true,
+        delay: i * 10, // Domino effect delay
       });
     }
     return enemies;
@@ -19,7 +20,7 @@ class LevelConfig {
 
   static levels = {
     1: {
-      duration: 15,
+      duration: 13,
       backgroundColor: "#A9B8B0",
       description: "Rain of arrows",
       get enemies() { return LevelConfig.getLevel1Enemies(); },

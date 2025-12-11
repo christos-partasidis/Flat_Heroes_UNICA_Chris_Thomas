@@ -20,7 +20,10 @@ class Game {
 
     this.currentLevel = 1;
     this.maxLevel = 5;
-    this.levelDuration = 10;
+    
+    const levelData = LevelConfig.getLevel(this.currentLevel);
+    this.levelDuration = levelData ? levelData.duration : 10;
+    
     this.lastTime = 0;
     this.timeLeft = this.levelDuration;
 
@@ -132,6 +135,11 @@ class Game {
           const levelSelect = document.getElementById("levelSelect");
           if (levelSelect) {
             this.currentLevel = parseInt(levelSelect.value);
+            
+            const levelData = LevelConfig.getLevel(this.currentLevel);
+            this.levelDuration = levelData ? levelData.duration : 10;
+            this.timeLeft = this.levelDuration;
+
             // Reset entities to ensure correct level data is loaded
             this.resetEntities();
           }
@@ -199,7 +207,11 @@ class Game {
     this.isGameOver = false;
     this.hasWon = false;
     this.currentLevel = 1;
+    
+    const levelData = LevelConfig.getLevel(this.currentLevel);
+    this.levelDuration = levelData ? levelData.duration : 10;
     this.timeLeft = this.levelDuration;
+
     this.resetEntities();
     this.start();
   }
@@ -217,6 +229,9 @@ class Game {
       height: this.player.size,
     };
     this.enemies.forEach((enemy) => {
+      // Skip enemies that haven't spawned yet
+      if (enemy.delay > 0) return;
+
       if (Collision.checkRectCollision(playerRect, enemy)) {
         SoundManager.play("collision");
         this.gameOver(false);
@@ -252,7 +267,13 @@ class Game {
 
   nextLevel() {
     this.currentLevel++;
+    
+    const levelData = LevelConfig.getLevel(this.currentLevel);
+    this.levelDuration = levelData ? levelData.duration : 10;
     this.timeLeft = this.levelDuration;
+
+    // Update walls for the new level
+    this.walls = this.createWalls();
 
     // FIXED: Reset player SAFELY to center using LOGICAL dimensions
     this.player.x = this.canvas.width / 2 - this.player.size / 2;

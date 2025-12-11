@@ -11,6 +11,7 @@ class Enemy {
     this.width = config.width || 30;
     this.height = config.height || 30;
     this.destroyOnWall = config.destroyOnWall || false;
+    this.delay = config.delay || 0;
 
     this.color = "#FF0000";
     this.isDead = false;
@@ -33,11 +34,17 @@ class Enemy {
   }
 
   draw(ctx) {
+    if (this.delay > 0) return;
     ctx.fillStyle = this.color;
     ctx.fillRect(this.x, this.y, this.width, this.height);
   }
 
   update(walls) {
+    if (this.delay > 0) {
+      this.delay--;
+      return;
+    }
+
     // --- HORIZONTAL MOVEMENT ---
     this.x += this.speedX;
 
