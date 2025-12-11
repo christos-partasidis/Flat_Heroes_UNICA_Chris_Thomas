@@ -4,16 +4,14 @@ import SoundManager from "../core/SoundManager.js";
 
 class Player {
   constructor(canvas) {
-    // I need the canvas to know how big the screen is!
     this.canvas = canvas;
 
-    // Size of the player square (kept consistent across logic)
-    this.width = 30;
-    this.height = 30;
+    // Size of the player square
+    this.size = 30;
 
     // Start in the middle-ish
-    this.x = canvas.width / 2 - this.width / 2;
-    this.y = canvas.height * 0.25 - this.height / 2;
+    this.x = canvas.width / 2 - this.size / 2;
+    this.y = canvas.height * 0.25 - this.size / 2;
 
     // Colors and speed
     this.color = "#FF7711";
@@ -55,7 +53,7 @@ class Player {
       // Debug: Solid Red, no alpha
       ctx.fillStyle = "red";
       ctx.globalAlpha = 1.0;
-      ctx.fillRect(pos.x, pos.y, this.width, this.height);
+      ctx.fillRect(pos.x, pos.y, this.size, this.size);
 
       // Decrease life logic for testing
       pos.life--;
@@ -69,7 +67,7 @@ class Player {
     // Flash white if dashing, otherwise normal color
     ctx.fillStyle = this.isDashing ? "#FFFFFF" : this.color;
     //ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(this.x, this.y, this.width, this.height);
+    ctx.fillRect(this.x, this.y, this.size, this.size);
   }
 
   update(input, walls) {
@@ -114,12 +112,11 @@ class Player {
     }
 
     // 3. MOVE THE PLAYER
-    // 3. MOVE THE PLAYER
     if (this.isDashing) {
       // --- DASHING PHYSICS ---
       this.trail.push({ x: this.x, y: this.y, alpha: 1.0 });
 
-      // 1. Calculate where we WANT to go
+      // 1. Calculate where we want to go
       const nextX = this.x + this.dashVelocity;
 
       // 2. Create a rectangle for that future position
@@ -174,7 +171,6 @@ class Player {
         this.x += this.speed;
       }
 
-      // Jump (Space OR W OR ArrowUp)
       // Use keysJustPressed so holding it doesn't make you fly
       if (
         input.keysJustPressed[" "] ||
@@ -191,7 +187,6 @@ class Player {
       }
 
       // Apply Gravity
-      // Apply Gravity
       this.velocityY += this.gravity;
 
       if (this.velocityY > 14) {
@@ -206,7 +201,7 @@ class Player {
     walls.forEach((wall) => {
       if (
         Collision.checkRectCollision(
-          { x: this.x, y: this.y, width: this.width, height: this.height },
+          { x: this.x, y: this.y, width: this.size, height: this.size },
           wall,
         )
       ) {
@@ -215,9 +210,9 @@ class Player {
         // and choose the smallest overlap as the collision side.
 
         // Calculate how far we are inside the wall on each side
-        const overlapLeft = this.x + this.width - wall.x;
+        const overlapLeft = this.x + this.size - wall.x;
         const overlapRight = wall.x + wall.width - this.x;
-        const overlapTop = this.y + this.height - wall.y;
+        const overlapTop = this.y + this.size - wall.y;
         const overlapBottom = wall.y + wall.height - this.y;
 
         // Find the smallest overlap
@@ -229,26 +224,22 @@ class Player {
         );
 
         if (minOverlap === overlapTop) {
-          // HIT TOP of wall (It's a floor!)
           // Only count as floor if we are falling down (velocityY >= 0)
           if (this.velocityY >= 0) {
-            this.y = wall.y - this.height;
+            this.y = wall.y - this.size;
             this.velocityY = 0;
             this.onGround = true;
             this.collisions.bottom = true;
             this.jumpsRemaining = this.maxJumps;
           }
         } else if (minOverlap === overlapBottom) {
-          // HIT BOTTOM of wall (Ceiling)
           this.y = wall.y + wall.height;
           this.velocityY = 0;
           this.collisions.top = true;
         } else if (minOverlap === overlapLeft) {
-          // HIT LEFT side of wall
-          this.x = wall.x - this.width;
+          this.x = wall.x - this.size;
           this.collisions.right = true;
         } else if (minOverlap === overlapRight) {
-          // HIT RIGHT side of wall
           this.x = wall.x + wall.width;
           this.collisions.left = true;
         }

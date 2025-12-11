@@ -1,4 +1,5 @@
-// Game.js
+// src/js/Game.js
+
 import Canvas from "./Canvas.js";
 import Player from "../entities/Player.js";
 import InputHandler from "./InputHandler.js";
@@ -6,298 +7,175 @@ import Wall from "../entities/Wall.js";
 import Collision from "../physics/Collision.js";
 import Enemy from "../entities/Enemy.js";
 import SoundManager from "../core/SoundManager.js";
-import LevelConfig from "../utils/LevelConfig.js";
 
 class Game {
   constructor() {
-    // initialize canvas
     this.canvas = new Canvas();
 
-    // Game State Flags
     this.isRunning = false;
     this.isGameOver = false;
     this.hasWon = false;
-    this.gameHasStarted = false; 
+    this.gameHasStarted = false;
 
-    // Level System
     this.currentLevel = 1;
-    this.selectedLevel = 1; 
-    this.maxLevel = LevelConfig.getTotalLevels();
-
-    // Time Tracking
+    this.maxLevel = 5;
+    this.levelDuration = 10;
     this.lastTime = 0;
     this.timeLeft = this.levelDuration;
 
-    // Create Inputs
     this.input = new InputHandler();
 
-    // Create World Entities
     this.walls = this.createWalls();
 
-    // Initialize Player & Enemies
+    window.addEventListener("resize", () => this.handleResize());
+
     this.resetEntities();
 
-    // Developer mode setup
     this.devMode = false;
     this.iniDevMode();
     this.initVolumeMixer();
+    this.createGameUI();
 
-    console.log("Game initialized - waiting for user start.");
+    console.log("Game initialized.");
   }
 
-  // Helper to reset player and enemies (used in constructor and restart)
+  // --- FIXED: Keeps Physics Walls in Sync with Canvas Size ---
+  handleResize() {
+    setTimeout(() => {
+      // Recreate walls at new positions using LOGICAL dimensions
+      this.walls = this.createWalls();
+
+      // Keep player in bounds using LOGICAL dimensions
+      if (this.player) {
+        if (this.player.y > this.canvas.height) {
+          this.player.y = this.canvas.height - 100;
+        }
+        // Also check if player is off-screen horizontally
+        if (this.player.x > this.canvas.width) {
+          this.player.x = this.canvas.width / 2;
+        }
+      }
+
+      // Update enemy bounds
+      if (this.enemies) {
+        this.enemies.forEach((enemy) => {
+          if (enemy.x > this.canvas.width) enemy.x = this.canvas.width - 50;
+          if (enemy.y > this.canvas.height) enemy.y = this.canvas.height - 50;
+        });
+      }
+    }, 50);
+  }
+
+  createGameUI() {
+    const container = document.querySelector(".game-wrapper") || document.body;
+
+    // Start Screen with glassmorphic effect
+    this.startScreen = document.createElement("div");
+    this.startScreen.className = "overlay-screen";
+    this.startScreen.innerHTML = `
+        <div class="glass-box">
+            <h1>FLAT HEROES</h1>
+            <h2 style="color: #eee; margin-bottom: 30px;">Survive the Chaos</h2>
+            <button id="startBtn">PLAY NOW</button>
+        </div>
+    `;
+    container.appendChild(this.startScreen);
+
+    // Game Over Screen
+    this.gameOverScreen = document.createElement("div");
+    this.gameOverScreen.className = "overlay-screen hidden";
+    this.gameOverScreen.innerHTML = `
+        <div class="glass-box">
+            <h1 id="goTitle">GAME OVER</h1>
+            <h2 id="goSub" style="color: #eee; margin-bottom: 30px;">Try again?</h2>
+            <button id="restartBtn">RESTART</button>
+        </div>
+    `;
+    container.appendChild(this.gameOverScreen);
+
+    // HUD
+    this.hud = document.createElement("div");
+    this.hud.className = "hidden";
+    this.hud.style.cssText = `position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: white; font-size: 1.5rem; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.5); z-index: 50; pointer-events: none;`;
+    this.hud.innerHTML = `<span id="levelText">Level 1</span> <span style="margin: 0 15px; opacity: 0.5;">|</span> <span id="timerText">10s</span>`;
+    container.appendChild(this.hud);
+  }
+
   resetEntities() {
     this.player = new Player(this.canvas);
     this.spawnEnemiesForLevel();
   }
 
-  // The Entry Point: Shows "Click to Start"
   init() {
-    const ctx = this.canvas.ctx;
+    // Initial draw
+    this.canvas.ctx.fillStyle = "#6050dc";
+    this.canvas.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Clear and draw background
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    ctx.fillStyle = "#003C57";
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Draw Title
-    ctx.fillStyle = "white";
-    ctx.textAlign = "center";
-    ctx.font = "bold 50px Arial";
-    ctx.fillText("FLAT HEROES", this.canvas.width / 2, this.canvas.height * 0.2);
-
-    // Draw Level Buttons
-    this.drawLevelButtons(ctx);
-
-    // Draw Start Button
-    ctx.font = "bold 25px Arial";
-    ctx.fillStyle = "#028368";
-    ctx.fillRect(
-      this.canvas.width / 2 - 100,
-      this.canvas.height * 0.85,
-      200,
-      50
-    );
-    ctx.fillStyle = "white";
-    ctx.fillText("START GAME", this.canvas.width / 2, this.canvas.height * 0.85 + 35);
-
-    // Add click listeners
-    this.canvas.canvas.addEventListener("click", (e) => this.handleMenuClick(e), { once: false });
-  }
-
-  drawLevelButtons(ctx) {
-    const buttonWidth = 80;
-    const buttonHeight = 80;
-    const spacing = 20;
-    const totalWidth = (buttonWidth + spacing) * this.maxLevel - spacing;
-    const startX = (this.canvas.width - totalWidth) / 2;
-    const startY = this.canvas.height * 0.5;
-
-    for (let i = 1; i <= this.maxLevel; i++) {
-      const x = startX + (i - 1) * (buttonWidth + spacing);
-      
-      // Button background
-      ctx.fillStyle = this.selectedLevel === i ? "#FF7711" : "#028368";
-      ctx.fillRect(x, startY, buttonWidth, buttonHeight);
-
-      // Level number
-      ctx.fillStyle = "white";
-      ctx.font = "bold 30px Arial";
-      ctx.fillText(i.toString(), x + buttonWidth / 2, startY + 45);
+    // Hook up buttons
+    const startBtn = document.getElementById("startBtn");
+    if (startBtn) {
+      startBtn.addEventListener("click", () => {
+        if (!this.gameHasStarted) {
+          this.gameHasStarted = true;
+          this.startScreen.classList.add("hidden");
+          this.hud.classList.remove("hidden");
+          if (typeof Howler !== "undefined" && Howler.ctx) Howler.ctx.resume();
+          this.start();
+        }
+      });
     }
   }
 
-  handleMenuClick(e) {
-    if (this.gameHasStarted) return;
-
-    const rect = this.canvas.canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-
-    // Check level button clicks
-    const buttonWidth = 80;
-    const buttonHeight = 80;
-    const spacing = 20;
-    const totalWidth = (buttonWidth + spacing) * this.maxLevel - spacing;
-    const startX = (this.canvas.width - totalWidth) / 2;
-    const startY = this.canvas.height * 0.5;
-
-    for (let i = 1; i <= this.maxLevel; i++) {
-      const x = startX + (i - 1) * (buttonWidth + spacing);
-      if (
-        clickX >= x &&
-        clickX <= x + buttonWidth &&
-        clickY >= startY &&
-        clickY <= startY + buttonHeight
-      ) {
-        this.selectedLevel = i;
-        this.init(); // Redraw menu with updated selection
-        return;
-      }
-    }
-
-    // Check start button click
-    const startBtnX = this.canvas.width / 2 - 100;
-    const startBtnY = this.canvas.height * 0.85;
-    if (
-      clickX >= startBtnX &&
-      clickX <= startBtnX + 200 &&
-      clickY >= startBtnY &&
-      clickY <= startBtnY + 50
-    ) {
-      this.gameHasStarted = true;
-      this.currentLevel = this.selectedLevel;
-
-      // Resume Audio Context
-      if (typeof Howler !== "undefined" && Howler.ctx) {
-        Howler.ctx.resume().then(() => {
-          console.log("Audio Context Resumed");
-        });
-      }
-
-      this.start();
-    }
-  }
-
-  // Updated wall creation based on layout type
   createWalls() {
     const wallThickness = 15;
+    // FIXED: Use logical dimensions (not scaled buffer dimensions)
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+
+    // Safety check if canvas size is 0
+    if (w === 0 || h === 0) return [];
 
     return [
-      // Top wall - Orange
-      new Wall(0, 0, this.canvas.width, wallThickness, "#FF7711"),
-
-      // Bottom wall - Green
-      new Wall(
-        0,
-        this.canvas.height - wallThickness,
-        this.canvas.width,
-        wallThickness,
-        "#028368",
-      ),
-
-      // Left wall - Blue
-      new Wall(0, 0, wallThickness, this.canvas.height, "#003C57"),
-
-      // Right wall - Yellow
-      new Wall(
-        this.canvas.width - wallThickness,
-        0,
-        wallThickness,
-        this.canvas.height,
-        "#CEEE00",
-      ),
-
-      // Middle Platform
-      new Wall(
-        wallThickness,
-        this.canvas.height * 0.5, // Lowered platform so it's reachable
-        (this.canvas.width / 2) * 1.25,
-        wallThickness,
-        "#028368",
-      ),
+      new Wall(0, 0, w, wallThickness, "#FF7711"), // Top
+      new Wall(0, h - wallThickness, w, wallThickness, "#028368"), // Bottom
+      new Wall(0, 0, wallThickness, h, "#003C57"), // Left
+      new Wall(w - wallThickness, 0, wallThickness, h, "#CEEE00"), // Right
+      new Wall(wallThickness, h * 0.5, (w / 2) * 1.5, wallThickness, "#028368"), // Middle
     ];
-
-    // Add layout-specific walls by level number
-    switch (this.currentLevel) {
-      case 1:
-        walls.push(
-          new Wall(wallThickness, this.canvas.height * 0.5, this.canvas.width * 0.75, wallThickness, "#028368")
-        );
-        break;
-
-      case 2:
-        walls.push(
-          
-          new Wall(wallThickness, this.canvas.height * 0.5, this.canvas.width * 0.33, wallThickness, "#830270ff"),
-          new Wall(this.canvas.width * 0.67, this.canvas.height * 0.5, this.canvas.width * 0.33 - wallThickness, wallThickness, "#831302ff"),
-          new Wall(this.canvas.width * 0.4, this.canvas.height * 0.25, this.canvas.width * 0.6 - wallThickness, wallThickness, "#028368")
-        );
-        break;
-
-      case 3:
-        // No walls for level 3
-        break;
-
-      case 4:
-        walls.push(
-          
-          new Wall(this.canvas.width * 0.625, this.canvas.height * 0.9, this.canvas.width * 0.25, wallThickness, "#028368"),
-          new Wall(this.canvas.width * 0.125, this.canvas.height * 0.7, this.canvas.width * 0.25, wallThickness, "#028368"),
-          new Wall(this.canvas.width * 0.625, this.canvas.height * 0.5, this.canvas.width * 0.25, wallThickness, "#028368"),
-          new Wall(this.canvas.width * 0.125, this.canvas.height * 0.3, this.canvas.width * 0.25, wallThickness, "#028368"),
-          new Wall(this.canvas.width * 0.85, this.canvas.height * 0.15, wallThickness, this.canvas.height * 0.15, "#028368"), 
-          new Wall(this.canvas.width * 0.70, this.canvas.height * 0.3, this.canvas.width * 0.15 + wallThickness, wallThickness, "#028368")
-        );
-        break;
-
-      case 5:
-        walls.push(
-          
-          new Wall(this.canvas.width * 0.2, this.canvas.height * 0.15, this.canvas.width * 0.75, wallThickness, "#028368"),
-          new Wall(this.canvas.width * 0.2, this.canvas.height * 0.5, this.canvas.width * 0.6, wallThickness, "#028368"),
-          new Wall(this.canvas.width * 0.05, this.canvas.height * 0.85, this.canvas.width * 0.75, wallThickness, "#028368"),
-          new Wall(this.canvas.width * 0.10, this.canvas.height * 0.15, wallThickness, this.canvas.height * 0.25, "#028368"),
-          new Wall(this.canvas.width * 0.90, this.canvas.height * 0.55, wallThickness, this.canvas.height * 0.25, "#028368")
-        );
-        break;
-    }
-
-    return walls;
   }
 
   start() {
-    console.log("Game Loop Starting...");
-    
-    // Load level configuration
-    const levelConfig = LevelConfig.getLevel(this.currentLevel);
-    this.levelDuration = levelConfig.duration;
-    this.timeLeft = this.levelDuration;
-
-    // Reset player/enemies so selected level settings apply before the loop starts
-    this.resetEntities();
-    
-    // Recreate walls for selected level
-    this.walls = this.createWalls();
-    
     this.isRunning = true;
     this.lastTime = performance.now();
 
-    // Play Music
-    SoundManager.play("bgm");
+    // Ensure walls are correct before starting logic
+    this.walls = this.createWalls();
 
-    // Start Loop
+    SoundManager.play("bgm");
     requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
   }
 
   restart() {
-    console.log("Restarting Game...");
     this.isGameOver = false;
     this.hasWon = false;
     this.currentLevel = 1;
     this.timeLeft = this.levelDuration;
-
+    this.resetEntities();
     this.start();
   }
 
   checkGameStatus() {
     if (this.isGameOver) return;
-
-    // 1. Check Win Condition (Timer)
     if (this.timeLeft <= 0) {
       this.completeLevel();
       return;
     }
-
-    // 2. Check Lose Condition (Collision with Enemies)
-    // We need a temp rect for the player because Enemy uses width/height but Player uses size
     const playerRect = {
       x: this.player.x,
       y: this.player.y,
-      width: this.player.width,
-      height: this.player.height,
+      width: this.player.size,
+      height: this.player.size,
     };
-
     this.enemies.forEach((enemy) => {
       if (Collision.checkRectCollision(playerRect, enemy)) {
         SoundManager.play("collision");
@@ -308,259 +186,187 @@ class Game {
 
   completeLevel() {
     if (this.currentLevel == this.maxLevel) {
-      // Final Level Completed - Win Game
       this.gameOver(true);
     } else {
-      // Level Completed - Advance to Next Level
       this.isRunning = false;
       this.showLevelTransition();
     }
   }
 
-  // This was suggested by AI (Tool: Claude Sonnet 4.5 integrated within VSCode + Auto Suggestions)
   showLevelTransition() {
     const ctx = this.canvas.ctx;
-
+    ctx.save();
     ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
     ctx.fillStyle = "#fff";
     ctx.textAlign = "center";
-    ctx.font = "bold 50px Arial";
+    ctx.font = "bold 60px Fredoka, sans-serif";
     ctx.fillText(
       `Level ${this.currentLevel} Complete!`,
       this.canvas.width / 2,
-      this.canvas.height / 2 - 20,
+      this.canvas.height / 2,
     );
-
-    ctx.fillStyle = "white";
-    ctx.font = "30px Arial";
-    ctx.fillText(
-      `Get ready for Level ${this.currentLevel + 1}`,
-      this.canvas.width / 2,
-      this.canvas.height / 2 + 20,
-    );
-
-    setTimeout(() => {
-      this.nextLevel();
-    }, 3000); // 3 second delay
+    ctx.restore();
+    setTimeout(() => this.nextLevel(), 2000);
   }
 
   nextLevel() {
     this.currentLevel++;
-    
-    const levelConfig = LevelConfig.getLevel(this.currentLevel);
-    this.levelDuration = levelConfig.duration;
     this.timeLeft = this.levelDuration;
-    
-    // Recreate walls for new level
-    this.walls = this.createWalls();
-    
-    // Reset player position
-    this.player.x = this.canvas.width / 2 - this.player.width / 2;
-    this.player.y = this.canvas.height * 0.25 - this.player.height / 2;
+
+    // FIXED: Reset player SAFELY to center using LOGICAL dimensions
+    this.player.x = this.canvas.width / 2 - this.player.size / 2;
+    this.player.y = this.canvas.height * 0.25 - this.player.size / 2;
     this.player.velocityY = 0;
 
     this.spawnEnemiesForLevel();
-
     this.isRunning = true;
     this.lastTime = performance.now();
     requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
   }
 
-  // In Game.js, update spawnEnemiesForLevel()
-
   spawnEnemiesForLevel() {
     this.enemies = [];
-    const enemyCount = this.currentLevel;
-    const wallThickness = 15;
+    const count = this.currentLevel;
+    const minDistanceFromPlayer = 150; // Minimum distance from player
     const enemySize = 30;
-    const minDistance = enemySize * 1.5;
+    const minDistanceBetweenEnemies = enemySize * 1.5;
 
-    // Helper to get random number in range
-    const randInRange = (min, max) => Math.random() * (max - min) + min;
-
-    for (let i = 0; i < enemyCount; i++) {
-      let attempts = 0;
+    for (let i = 0; i < count; i++) {
       let x, y;
-      let valid;
+      let attempts = 0;
+      let validPosition = false;
 
-      // --- POSITION RANDOMIZATION (Solves "Same Place" Issue) ---
-      do {
+      // Keep trying until we find a valid position
+      while (!validPosition && attempts < 100) {
         attempts++;
-        x = randInRange(
-          wallThickness,
-          this.canvas.width - wallThickness - enemySize,
-        );
-        y = randInRange(wallThickness, this.canvas.height - enemySize);
 
-        valid = true;
-        // Check against existing enemies to prevent overlap
+        // Random position
+        x = Math.random() * (this.canvas.width - 100) + 50;
+        y = Math.random() * (this.canvas.height / 2);
+
+        // Calculate distance from player
+        const dx = x - this.player.x;
+        const dy = y - this.player.y;
+        const distanceFromPlayer = Math.sqrt(dx * dx + dy * dy);
+
+        // Check if far enough from player
+        if (distanceFromPlayer < minDistanceFromPlayer) {
+          continue;
+        }
+
+        // Check if far enough from other enemies
+        validPosition = true;
         for (const other of this.enemies) {
-          const dx = other.x - x;
-          const dy = other.y - y;
-          if (dx * dx + dy * dy < minDistance * minDistance) {
-            valid = false;
+          const dxEnemy = other.x - x;
+          const dyEnemy = other.y - y;
+          const distanceFromEnemy = Math.sqrt(
+            dxEnemy * dxEnemy + dyEnemy * dyEnemy,
+          );
+
+          if (distanceFromEnemy < minDistanceBetweenEnemies) {
+            validPosition = false;
             break;
           }
         }
-      } while (!valid && attempts < 50);
+      }
 
-      // Create enemy (Constructor now handles random direction!)
       const enemy = new Enemy(x, y, this.canvas);
+      const speedMult = 1 + this.currentLevel * 0.2;
 
-      // Apply Level Speed Scaling
-      const speedMultiplier = 1 + (this.currentLevel - 1) * 0.2; // Lowered slightly for better balance
-      enemy.velocity.mult(speedMultiplier);
+      // Safety for velocity
+      if (enemy.velocity) {
+        enemy.velocity.mult(speedMult);
+      }
 
       this.enemies.push(enemy);
     }
   }
 
-  // game over logic
   gameOver(won) {
-    this.isRunning = false; // Stop the loop
+    this.isRunning = false;
     this.isGameOver = true;
     this.hasWon = won;
-
-    // Handle Sound
     SoundManager.stop("bgm");
     if (!won) SoundManager.play("hit");
 
-    // Log status
-    const message = won ? "VICTORY!" : "GAME OVER";
-    const subMessage = won ? "You survived!" : "Click to Restart";
-    console.log(message);
+    const title = document.getElementById("goTitle");
+    const sub = document.getElementById("goSub");
+    const restartBtn = document.getElementById("restartBtn");
 
-    // Draw the end screen
-    this.drawGameOverScreen(message, subMessage);
+    if (title) {
+      title.innerText = won ? "VICTORY!" : "GAME OVER";
+      title.style.background = won
+        ? "linear-gradient(to right, #CEEE00, #028368)"
+        : "linear-gradient(to right, #FF4B4B, #FF9090)";
+      title.style.webkitBackgroundClip = "text";
+      title.style.webkitTextFillColor = "transparent";
+    }
+    if (sub)
+      sub.innerText = won
+        ? "All Levels Cleared!"
+        : `Died on Level ${this.currentLevel}`;
 
-    // Add Restart Listener (with a small delay to prevent accidental double-clicks)
-    setTimeout(() => {
-      window.addEventListener("click", () => this.restart(), { once: true });
-    }, 500);
+    this.gameOverScreen.classList.remove("hidden");
+
+    if (restartBtn) {
+      restartBtn.onclick = () => {
+        this.gameOverScreen.classList.add("hidden");
+        this.restart();
+      };
+    }
   }
 
-  // Main Game Loop
   gameLoop(timestamp) {
     if (!this.isRunning) return;
-
     const deltaTime = (timestamp - this.lastTime) / 1000;
     this.lastTime = timestamp;
+    if (deltaTime < 0.1) this.timeLeft -= deltaTime;
 
-    if (deltaTime < 0.1) {
-      this.timeLeft -= deltaTime;
-    }
-
-    // Get level config for background color
-    const levelConfig = LevelConfig.getLevel(this.currentLevel);
-    
-    // Clear canvas once
     this.canvas.clear();
-    
-    // Draw level-specific background
-    this.canvas.ctx.fillStyle = levelConfig.backgroundColor;
-    this.canvas.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Update & Draw Walls
-    this.walls.forEach((wall) => wall.draw(this.canvas.ctx));
-
-    // Update & Draw Player
+    this.walls.forEach((w) => w.draw(this.canvas.ctx));
     this.player.update(this.input, this.walls);
     this.player.draw(this.canvas.ctx);
+    this.enemies.forEach((e) => {
+      e.update(this.walls);
+      e.draw(this.canvas.ctx);
+    });
 
-    // Update & Draw Enemies
-    for (let i = this.enemies.length - 1; i >= 0; i--) {
-      const enemy = this.enemies[i];
-      enemy.update(this.walls);
-      
-      if (enemy.isDead) {
-        this.enemies.splice(i, 1);
-      } else {
-        enemy.draw(this.canvas.ctx);
-      }
-    }
-
-    // Check Win/Lose
     this.checkGameStatus();
-
-    // Draw UI (Timer)
-    this.drawUI();
-
-    // Debug Panel
+    this.updateHUD();
     this.updateDebugPanel();
-
-    // Reset Input flags
     this.input.update();
 
-    // Continue Loop
-    if (this.isRunning) {
-      requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
-    }
+    if (this.isRunning) requestAnimationFrame((t) => this.gameLoop(t));
   }
 
-  // --- DRAWING HELPERS ---
-
-  drawUI() {
-    const ctx = this.canvas.ctx;
-    ctx.fillStyle = "#fff";
-    ctx.font = "bold 24px Arial";
-    ctx.textAlign = "left";
-    // Show level and time
-    ctx.fillText(`Level ${this.currentLevel}/${this.maxLevel}`, 20, 40);
-    ctx.fillText(`Time: ${Math.max(0, Math.ceil(this.timeLeft))}`, 20, 70);
+  updateHUD() {
+    const lvl = document.getElementById("levelText");
+    const time = document.getElementById("timerText");
+    if (lvl) lvl.innerText = `Level ${this.currentLevel}/${this.maxLevel}`;
+    if (time) time.innerText = `${Math.max(0, Math.ceil(this.timeLeft))}s`;
   }
-
-  drawGameOverScreen(title, subtitle) {
-    const ctx = this.canvas.ctx;
-    ctx.save();
-
-    // Semi-transparent black overlay
-    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    // Text
-    ctx.fillStyle = "#fff";
-    ctx.textAlign = "center";
-
-    ctx.font = "bold 60px Arial";
-    ctx.fillText(title, this.canvas.width / 2, this.canvas.height / 2 - 20);
-
-    ctx.font = "30px Arial";
-    ctx.fillText(subtitle, this.canvas.width / 2, this.canvas.height / 2 + 40);
-
-    ctx.restore();
-  }
-
-  // --- DEBUG TOOLS ---
 
   iniDevMode() {
-    const toggleBtn = document.getElementById("devModeToggle");
-    const debugPanel = document.getElementById("debugPanel");
-
-    if (!toggleBtn || !debugPanel) return; // Safety check
-
-    toggleBtn.addEventListener("click", () => {
-      this.devMode = !this.devMode;
-      toggleBtn.textContent = `Dev Mode: ${this.devMode ? "ON" : "OFF"}`;
-      toggleBtn.classList.toggle("active", this.devMode);
-      debugPanel.classList.toggle("hidden", !this.devMode);
-    });
+    const btn = document.getElementById("devModeToggle");
+    const panel = document.getElementById("debugPanel");
+    if (btn) {
+      btn.addEventListener("click", () => {
+        this.devMode = !this.devMode;
+        btn.textContent = `Dev Mode: ${this.devMode ? "ON" : "OFF"}`;
+        panel.classList.toggle("hidden", !this.devMode);
+      });
+    }
   }
 
   initVolumeMixer() {
     const tglBtn = document.getElementById("volumeToggle");
     const vlmP = document.getElementById("volumePanel");
-
-    if (!tglBtn || !vlmP) return;
-
-    // Toggle panel visibility
+    if (!tglBtn) return;
     tglBtn.addEventListener("click", () => {
-      const isHidden = vlmP.classList.toggle("hidden");
-      tglBtn.classList.toggle("active", !isHidden);
+      vlmP.classList.toggle("hidden");
     });
 
-    // Setup volume sliders
     const setupSlider = (sliderId, valueId, type) => {
       const slider = document.getElementById(sliderId);
       const valueDisplay = document.getElementById(valueId);
@@ -581,43 +387,14 @@ class Game {
 
   updateDebugPanel() {
     if (!this.devMode) return;
-
-    const debugContent = document.getElementById("debugContent");
-    if (!debugContent) return;
-
-    const collisions = this.player.collisions;
-
-    debugContent.innerHTML = `
-            <div class="debug-section">
-                <h4>Game State</h4>
-                <div class="debug-item">
-                    <span class="debug-label">Time:</span>
-                    <span class="debug-value">${this.timeLeft.toFixed(1)}</span>
-                </div>
-            </div>
-            <div class="debug-section">
-                <h4>Player Position</h4>
-                <div class="debug-item">
-                    <span class="debug-label">X:</span>
-                    <span class="debug-value">${Math.round(this.player.x)}</span>
-                </div>
-                <div class="debug-item">
-                    <span class="debug-label">Y:</span>
-                    <span class="debug-value">${Math.round(this.player.y)}</span>
-                </div>
-            </div>
-            <div class="debug-section">
-                <h4>Collisions</h4>
-                <div class="debug-item">
-                    <span class="debug-label">Top:</span>
-                    <span class="debug-value ${collisions.top ? "active" : ""}">${collisions.top}</span>
-                </div>
-                <div class="debug-item">
-                    <span class="debug-label">Bottom:</span>
-                    <span class="debug-value ${collisions.bottom ? "active" : ""}">${collisions.bottom}</span>
-                </div>
-            </div>
-        `;
+    const content = document.getElementById("debugContent");
+    if (content) {
+      content.innerHTML = `
+        X: ${Math.round(this.player.x)} Y: ${Math.round(this.player.y)}<br>
+        Canvas: ${this.canvas.width}x${this.canvas.height}<br>
+        Enemies: ${this.enemies.length}
+      `;
+    }
   }
 }
 
