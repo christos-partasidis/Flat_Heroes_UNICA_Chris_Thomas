@@ -8,6 +8,7 @@ import Collision from "../physics/Collision.js";
 import Enemy from "../entities/Enemy.js";
 import SoundManager from "../core/SoundManager.js";
 import LevelConfig from "../utils/LevelConfig.js";
+import Particle from "../entities/Particle.js";
 
 class Game {
   constructor() {
@@ -17,6 +18,8 @@ class Game {
     this.isGameOver = false;
     this.hasWon = false;
     this.gameHasStarted = false;
+
+    this.particles = []; // Array to hold active particles
 
     this.currentLevel = 1;
     this.maxLevel = 5;
@@ -338,6 +341,12 @@ class Game {
     }
   }
 
+  createExplosion(x, y, color) {
+    for (let i = 0; i < 10; i++) {
+      this.particles.push(new Particle(x, y, color));
+    }
+  }
+
   gameLoop(timestamp) {
     if (!this.isRunning) return;
     const deltaTime = (timestamp - this.lastTime) / 1000;
@@ -349,12 +358,30 @@ class Game {
     this.player.update(this.input, this.walls);
     this.player.draw(this.canvas.ctx);
 
+    // Update & Draw Particles
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.update();
+      p.draw(this.canvas.ctx);
+      if (p.life <= 0) {
+        this.particles.splice(i, 1);
+      }
+    }
+
     // Update & Draw Enemies
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const enemy = this.enemies[i];
       enemy.update(this.walls);
 
       if (enemy.isDead) {
+        // Play sound
+        SoundManager.play("enemyHit");
+        // Spawn particles at enemy center
+        this.createExplosion(
+          enemy.x + enemy.width / 2,
+          enemy.y + enemy.height / 2,
+          enemy.color,
+        );
         this.enemies.splice(i, 1);
       } else {
         enemy.draw(this.canvas.ctx);

@@ -31,6 +31,10 @@ class SoundManager {
         src: ["assets/sounds/collision.mp3"],
         volume: 0.7,
       }),
+      enemyHit: new Howl({
+        src: ["assets/sounds/enemy_collision.mp3"],
+        volume: 0.3,
+      }),
       // Background music
       bgm: new Howl({
         src: ["assets/sounds/music.mp3"], // You need a music file
@@ -70,6 +74,7 @@ class SoundManager {
       this.sounds.jump.volume(this.volumes.sfx * this.volumes.master);
       this.sounds.dash.volume(this.volumes.sfx * this.volumes.master * 0.6);
       this.sounds.hit.volume(this.volumes.sfx * this.volumes.master * 1.6);
+      this.sounds.enemyHit.volume(this.volumes.sfx * this.volumes.master * 0.4);
     }
   }
     updateAllVolumes() {
@@ -77,6 +82,7 @@ class SoundManager {
     this.sounds.jump.volume(this.volumes.sfx * this.volumes.master);
     this.sounds.dash.volume(this.volumes.sfx * this.volumes.master * 0.6);
     this.sounds.hit.volume(this.volumes.sfx * this.volumes.master * 1.6);
+    this.sounds.enemyHit.volume(this.volumes.sfx * this.volumes.master * 0.4);
   }
 
   getVolume(type) {

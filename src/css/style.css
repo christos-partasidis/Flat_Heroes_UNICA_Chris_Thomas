@@ -13,7 +13,7 @@ body {
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background: radial-gradient(circle at center, #6050dc 0%, #3a2f8f 100%);
+    background: radial-gradient(circle at center, #A8B7AF 0%, #3a2f8f 100%);
     display: flex;
     justify-content: center;
     align-items: center;
